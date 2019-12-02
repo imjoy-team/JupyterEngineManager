@@ -1,6 +1,6 @@
-# `nbinteract-core`
+# `JupyterServices` for ImJoy
 
-This package contains the Javascript API for [`JupyterServices`](https://github.com/imjoy-team/JupyterServices)
+This package contains the Javascript API for [`JupyterServices`](https://github.com/imjoy-team/JupyterServices) used by the Jupyter Engine plugin in ImJoy.
 
 ## Basic Usage
 
