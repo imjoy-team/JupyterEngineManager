@@ -1,6 +1,6 @@
 # `JupyterEngineManager` for ImJoy
 
-This package contains the Javascript API for [`JupyterEngineManager`](https://github.com/imjoy-team/JupyterEngineManager) used by the Jupyter Engine plugin in ImJoy.
+This package contains the Javascript API for [`JupyterEngineManager`](https://github.com/imjoy-team/jupyter-engine-manager) used by the Jupyter Engine plugin in ImJoy.
 
 ## Basic Usage
 
