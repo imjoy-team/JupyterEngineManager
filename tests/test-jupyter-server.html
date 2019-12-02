@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" />
+<title>Jupyter Services</title>
+
+<!-- Loads nbinteract package -->
+<script src="http://localhost:8000/lib/index.bundle.js"></script>
+<script>
+  var jserver = new JupyterServices.JupyterServer({
+    spec: 'oeway/imjoy-binder-image/master',
+    baseUrl: 'https://mybinder.org',
+    provider: 'gh',
+  })
+  jserver.startServer()
+</script></div></div>
+</body>
