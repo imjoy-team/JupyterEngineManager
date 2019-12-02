@@ -2,11 +2,11 @@ const DEFAULT_BASE_URL = 'https://mybinder.org'
 const DEFAULT_PROVIDER = 'gh'
 const DEFAULT_SPEC = 'oeway/imjoy-binder-image/master' 
 
-const debounce = JupyterServices.debounce
-const ServerConnection = JupyterServices.services.ServerConnection
-const Kernel = JupyterServices.services.Kernel
-const BinderHub = JupyterServices.BinderHub
-const util = JupyterServices.util
+const debounce = JupyterEngineManager.debounce
+const ServerConnection = JupyterEngineManager.services.ServerConnection
+const Kernel = JupyterEngineManager.services.Kernel
+const BinderHub = JupyterEngineManager.BinderHub
+const util = JupyterEngineManager.util
 const baseToWsUrl = baseUrl =>
   (baseUrl.startsWith('https:') ? 'wss:' : 'ws:') +
   baseUrl
