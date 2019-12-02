@@ -1,6 +1,6 @@
 {
-  "name": "nbinteract-core",
-  "version": "0.2.4",
+  "name": "JupyterServices",
+  "version": "0.3.0",
   "description": "Library to allow public interactive Jupyter notebooks",
   "main": "lib/index.bundle.js",
   "module": "src/index.js",
@@ -8,7 +8,7 @@
     "test": "echo \"Error: no tests available\" && exit 1",
     "build": "webpack --mode production --devtool source-map",
     "watch": "webpack --watch",
-    "serve": "webpack-dev-server --open",
+    "serve": "webpack-dev-server",
     "stats": "webpack --profile --json > stats.json",
     "stats-prod": "webpack --profile --json --mode production > stats-prod.json",
     "analyze": "webpack-bundle-analyzer -p 9999 stats.json",
@@ -36,8 +36,6 @@
     "@jupyterlab/services": "^1.1.2"
   },
   "devDependencies": {
-    "lodash.debounce": "^4.0.8",
-    "rimraf": "^2.6.2",
     "@babel/core": "^7.0.0-beta.39",
     "@babel/plugin-syntax-dynamic-import": "^7.0.0-beta.39",
     "@babel/polyfill": "^7.0.0-beta.39",
@@ -47,13 +45,17 @@
     "babel-loader": "8.0.0-beta.2",
     "babel-runtime": "^6.26.0",
     "clean-webpack-plugin": "^0.1.19",
+    "copy-webpack-plugin": "^5.0.5",
     "css-loader": "^0.28.4",
     "file-loader": "^0.11.2",
     "fs-extra": "^0.30.0",
+    "html-loader": "^0.5.5",
     "json-loader": "^0.5.4",
     "lerna": "^3.8.0",
+    "lodash.debounce": "^4.0.8",
     "postcss": "^6.0.2",
     "prettier": "^1.6.1",
+    "rimraf": "^2.6.2",
     "schema-utils": "^0.4.3",
     "style-loader": "^0.18.1",
     "url-loader": "^0.5.9",
@@ -61,7 +63,8 @@
     "webpack-bundle-analyzer": "^3.3.2",
     "webpack-cli": "^3.1.2",
     "webpack-dev-server": "^3.1.1",
-    "webpack-merge": "^4.1.1"
+    "webpack-merge": "^4.1.1",
+    "write-file-webpack-plugin": "^4.5.1"
   },
   "gitHead": "9f00f654748b85702463b60a98751943c0107486"
 }

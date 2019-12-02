@@ -1,6 +1,8 @@
 const webpack = require('webpack')
 const path = require('path')
 const CleanWebpackPlugin = require('clean-webpack-plugin')
+const CopyPlugin = require('copy-webpack-plugin');
+const WriteFilePlugin = require('write-file-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
   .BundleAnalyzerPlugin
 
@@ -18,11 +20,19 @@ const config = {
   },
   output: {
     filename: 'index.bundle.js',
-    path: path.resolve(__dirname, 'lib'),
+    path: path.resolve(__dirname, 'build'),
   },
   devtool: 'cheap-module-eval-source-map',
   devServer: {
-    contentBase: './',
+    contentBase: path.resolve(__dirname, 'build'),
+    publicPath: '/',
+    port: 9090,
+    hot: true,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
+    }
   },
   plugins: [
     shim(/moment/),
@@ -47,11 +57,16 @@ const config = {
     shim(/@jupyterlab\/coreutils\/lib\/(time|settingregistry|.*menu.*)/),
     shim(/@jupyterlab\/services\/lib\/(session|contents|terminal)\/.*/),
 
-    new CleanWebpackPlugin(['lib']),
+    new CleanWebpackPlugin(['build']),
+    new CopyPlugin([
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'build')},
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html'), to: path.resolve(__dirname, 'build')}
+    ]),
     new BundleAnalyzerPlugin({
       analyzerMode: 'static',
       openAnalyzer: false,
     }),
+    new WriteFilePlugin(),
   ],
   module: {
     rules: [
@@ -79,6 +94,10 @@ const config = {
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.imjoy\.html$/,
+        use: 'raw-loader',
       },
     ],
   },
