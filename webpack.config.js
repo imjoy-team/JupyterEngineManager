@@ -2,6 +2,8 @@ const webpack = require('webpack')
 const path = require('path')
 const CleanWebpackPlugin = require('clean-webpack-plugin')
 const CopyPlugin = require('copy-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const HtmlReplaceWebpackPlugin = require('html-replace-webpack-plugin')
 const WriteFilePlugin = require('write-file-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
   .BundleAnalyzerPlugin
@@ -13,7 +15,7 @@ function shim(regExp) {
   return new webpack.NormalModuleReplacementPlugin(regExp, shimJS)
 }
 
-const config = {
+const config =  (env, argv) => ({
   mode: 'development',
   entry: {
     index: './src/index.js',
@@ -59,9 +61,20 @@ const config = {
 
     new CleanWebpackPlugin(['build']),
     new CopyPlugin([
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'build')},
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html'), to: path.resolve(__dirname, 'build')}
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'build')}
     ]),
+    new HtmlWebpackPlugin(
+      {
+        filename: 'Jupyter-Engine-Manager.imjoy.html',
+        template: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html')
+      }
+    ),
+    new HtmlReplaceWebpackPlugin([
+      {
+        pattern: 'STATIC_SERVER_URL',
+        replacement: argv.mode === 'production'?'http://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
+      }]
+    ),
     new BundleAnalyzerPlugin({
       analyzerMode: 'static',
       openAnalyzer: false,
@@ -95,12 +108,8 @@ const config = {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
       },
-      {
-        test: /\.imjoy\.html$/,
-        use: 'raw-loader',
-      },
     ],
   },
-}
+})
 
 module.exports = config
