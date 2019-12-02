@@ -1,11 +1,11 @@
-# `JupyterServices` for ImJoy
+# `JupyterEngineManager` for ImJoy
 
-This package contains the Javascript API for [`JupyterServices`](https://github.com/imjoy-team/JupyterServices) used by the Jupyter Engine plugin in ImJoy.
+This package contains the Javascript API for [`JupyterEngineManager`](https://github.com/imjoy-team/JupyterEngineManager) used by the Jupyter Engine plugin in ImJoy.
 
 ## Basic Usage
 
 ```javascript
-var jserver = new JupyterServices.JupyterServer({
+var jserver = new JupyterEngineManager.JupyterServer({
     spec: 'oeway/imjoy-binder-image/master',
     baseUrl: 'https://mybinder.org',
     provider: 'gh',

@@ -1,5 +1,5 @@
 {
-  "name": "JupyterServices",
+  "name": "jupyter-engine-manager",
   "version": "0.3.0",
   "description": "Library to allow public interactive Jupyter notebooks",
   "main": "lib/index.bundle.js",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/imjoy-team/JupyterServices.git"
+    "url": "git+https://github.com/imjoy-team/JupyterEngineManager.git"
   },
   "keywords": [
     "jupyter",
@@ -29,9 +29,9 @@
   "author": "Sam Lau",
   "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://github.com/imjoy-team/JupyterServices/issues"
+    "url": "https://github.com/imjoy-team/JupyterEngineManager/issues"
   },
-  "homepage": "https://github.com/imjoy-team/JupyterServices#readme",
+  "homepage": "https://github.com/imjoy-team/JupyterEngineManager#readme",
   "dependencies": {
     "@jupyterlab/services": "^1.1.2"
   },

@@ -12,7 +12,7 @@ import BinderHub from './BinderHub'
 // Kernel, ServerConnection etc. are wrapped in services
 // Define globally for use in browser.
 if (typeof window !== 'undefined') {
-  window.JupyterServices = {services, BinderHub, JupyterServer, util, debounce}
+  window.JupyterEngineManager = {services, BinderHub, JupyterServer, util, debounce}
 }
 
 export default {services, BinderHub, JupyterServer, util, debounce}
