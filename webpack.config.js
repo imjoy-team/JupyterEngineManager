@@ -72,7 +72,7 @@ const config =  (env, argv) => ({
     new HtmlReplaceWebpackPlugin([
       {
         pattern: 'STATIC_SERVER_URL',
-        replacement: argv.mode === 'production'?'https://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
+        replacement: argv.mode === 'production'?'https://jupyter-engine-manager.netlify.com':'http://127.0.0.1:9090',
       }]
     ),
     new BundleAnalyzerPlugin({
