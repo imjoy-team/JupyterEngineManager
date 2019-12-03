@@ -4,7 +4,7 @@ const CleanWebpackPlugin = require('clean-webpack-plugin')
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const HtmlReplaceWebpackPlugin = require('html-replace-webpack-plugin')
-const WriteFilePlugin = require('write-file-webpack-plugin');
+// const WriteFilePlugin = require('write-file-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
   .BundleAnalyzerPlugin
 
@@ -22,11 +22,11 @@ const config =  (env, argv) => ({
   },
   output: {
     filename: 'index.bundle.js',
-    path: path.resolve(__dirname, 'build'),
+    path: path.resolve(__dirname, 'docs'),
   },
   devtool: 'cheap-module-eval-source-map',
   devServer: {
-    contentBase: path.resolve(__dirname, 'build'),
+    contentBase: path.resolve(__dirname, 'docs'),
     publicPath: '/',
     port: 9090,
     hot: true,
@@ -59,9 +59,9 @@ const config =  (env, argv) => ({
     shim(/@jupyterlab\/coreutils\/lib\/(time|settingregistry|.*menu.*)/),
     shim(/@jupyterlab\/services\/lib\/(session|contents|terminal)\/.*/),
 
-    new CleanWebpackPlugin(['build']),
+    // new CleanWebpackPlugin(['docs']),
     new CopyPlugin([
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'build')}
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'docs')}
     ]),
     new HtmlWebpackPlugin(
       {
@@ -79,7 +79,7 @@ const config =  (env, argv) => ({
       analyzerMode: 'static',
       openAnalyzer: false,
     }),
-    new WriteFilePlugin(),
+    // new WriteFilePlugin(),
   ],
   module: {
     rules: [
