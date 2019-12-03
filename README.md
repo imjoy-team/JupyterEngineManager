@@ -1,6 +1,9 @@
-# `JupyterEngineManager` for ImJoy
+# Jupyter-Engine-Manager for ImJoy
 
 This package contains the Javascript API for [`JupyterEngineManager`](https://github.com/imjoy-team/jupyter-engine-manager) used by the Jupyter Engine plugin in ImJoy.
+
+
+Click [here](https://jupyter-engine-manager.netlify.com/jupyter-engine-manager.imjoy.html) to run Jupyter Engine Manager in ImJoy.
 
 ## Basic Usage
 

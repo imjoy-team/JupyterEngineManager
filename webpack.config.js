@@ -72,15 +72,7 @@ const config =  (env, argv) => ({
     new HtmlReplaceWebpackPlugin([
       {
         pattern: 'STATIC_SERVER_URL',
-<<<<<<< HEAD
-<<<<<<< HEAD
         replacement: argv.mode === 'production'?'https://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
-=======
-        replacement: argv.mode === 'production'?'http://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
->>>>>>> automatically set URL for development and production
-=======
-        replacement: argv.mode === 'production'?'https://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
->>>>>>> use https for production
       }]
     ),
     new BundleAnalyzerPlugin({
