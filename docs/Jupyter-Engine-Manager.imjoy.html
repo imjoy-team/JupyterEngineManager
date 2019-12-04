@@ -1,0 +1,40 @@
+<docs>
+## Jupyter Engine Manager
+
+This plugin uses Jupyter notebook servers as engine backend, it can either spwan Jupyter notebook servers 
+via [mybinder.org](https://mybinder.org) or connect to a local Jupyter notebook server.
+
+</docs>
+
+<config lang="json">
+{
+    "name": "Jupyter-Engine-Manager",
+    "type": "iframe",
+    "tags": [],
+    "ui": "",
+    "version": "0.3.9",
+    "cover": "",
+    "description": "This plugin uses Jupyter notebook servers as engine backend, it can either spwan Jupyter notebook servers via [mybinder.org](https://mybinder.org) or connect to a local Jupyter notebook server.",
+    "icon": "extension",
+    "inputs": null,
+    "outputs": null,
+    "api_version": "0.1.6",
+    "env": "",
+    "permissions": [],
+    "requirements": [
+                    "https://lib.imjoy.io/static/jailed/_JailedSite.js",
+                    "https://imjoy-team.github.io/jupyter-engine-manager/index.bundle.js", 
+                    "https://imjoy-team.github.io/jupyter-engine-manager/Jupyter-Engine-Manager.script.js"
+                    ],
+    "dependencies": [],
+    "runnable": false,
+    "flags": ["engine-factory", 
+            "engine", 
+            "file-manager"
+            ]
+}
+</config>
+
+<script lang="javascript">
+</script>
+    <script type="text/javascript" src="index.bundle.js"></script>

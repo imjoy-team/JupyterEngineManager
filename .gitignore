@@ -1,6 +1,7 @@
 built/
 data/
 lib/
+docs/report.html
 
 # Created by https://www.gitignore.io/api/osx,python
 
