@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/imjoy-team/jupyter-engine-manager#readme",
   "dependencies": {
-    "@jupyterlab/services": "^1.1.2"
+    "@jupyterlab/services": "^4.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.39",
