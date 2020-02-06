@@ -414,7 +414,7 @@ const description=`#### Jupyter Engine <sup>alpha</sup>
  
   This allows ImJoy run Python plugin via a [Jupyter notebook](https://jupyter.org/) server. The easiest way to run Jupyter notebook is by using [Anaconda](https://docs.anaconda.com/anaconda/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) with Jupyter notebook installed.  
  
-  1. Start a Jupyter notebook from your terminal (or Anaconda Prompt) with the command: <br><code>jupyter notebook --NotebookApp.allow_origin='*'</code>
+  1. Start a Jupyter notebook from your terminal (or Anaconda Prompt) with the command: <br><code>jupyter notebook --NotebookApp.allow_origin='*' --no-browser</code>
   2. Copy and paste the provided URL in "Jupyter Notebook URL" below. **⚠️Important**: the URL needs to contain the connection token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe
   3. Click "CONNECT TO JUPYTER"
 

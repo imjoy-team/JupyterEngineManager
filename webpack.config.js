@@ -66,7 +66,8 @@ const config =  (env, argv) => ({
     new HtmlWebpackPlugin(
       {
         filename: 'Jupyter-Engine-Manager.imjoy.html',
-        template: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html')
+        template: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html'),
+        inject: false
       }
     ),
     new HtmlReplaceWebpackPlugin([
