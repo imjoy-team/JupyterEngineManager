@@ -200,4 +200,5 @@ export default class JupyterServer {
     const kernel = await this.getKernel()
     return kernel.shutdown()
   }
+
 }

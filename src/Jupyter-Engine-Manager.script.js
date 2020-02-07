@@ -2,6 +2,7 @@ const DEFAULT_BASE_URL = 'https://mybinder.org'
 const DEFAULT_PROVIDER = 'gh'
 const DEFAULT_SPEC = 'oeway/imjoy-binder-image/master' 
 
+const ContentsManager = JupyterEngineManager.ContentsManager
 const debounce = JupyterEngineManager.debounce
 const ServerConnection = JupyterEngineManager.services.ServerConnection
 const Kernel = JupyterEngineManager.services.Kernel
@@ -14,11 +15,22 @@ const baseToWsUrl = baseUrl =>
     .slice(1)
     .join(':')
 
+function normalizePath(path){
+  path = Array.prototype.join.apply(arguments,['/'])
+  var sPath;
+  while (sPath!==path) {
+      sPath = n(path);
+      path = n(sPath);
+  }
+  function n(s){return s.replace(/\/+/g,'/').replace(/\w+\/+\.\./g,'')}
+  return path.replace(/^\//,'').replace(/\/$/,'');
+}
 class JupyterServer {
   constructor() {
     // this._kernelHeartbeat = this._kernelHeartbeat.bind(this)
     this.cached_servers = {}
     this.registered_file_managers = {}
+
     if(localStorage.jupyter_servers){
       try{
         this.cached_servers = JSON.parse(localStorage.jupyter_servers)
@@ -154,7 +166,6 @@ class JupyterServer {
     }
   }
 
-
   async startServer({
     name = null,
     spec = DEFAULT_SPEC,
@@ -211,6 +222,7 @@ class JupyterServer {
     }
 
     if(!this.registered_file_managers[server_url]){
+      const contents = new ContentsManager({serverSettings:serverSettings});
       const url = server_url;
       const token = server_token;
       let name = new URL(url);
@@ -220,24 +232,30 @@ class JupyterServer {
         name: name,
         url: url,
         async listFiles(root, type, recursive){
-          const file_url = `${url}api/contents/${encodeURIComponent(root)}?token=${token}`;
+          root = normalizePath(root)
+          const file_url = `${url}api/contents/${encodeURIComponent(root)}?token=${token}&${ Math.random().toString(36).substr(2, 9)}`;
           const response = await fetch(file_url);
           const files = await response.json();
           files.children = files.content;
           console.log('listing files', file_url, files)
           return files
         },
-        removeFiles(){
-          
+        async removeFile(path, type, recursive){
+          path = normalizePath(path)
+          await contents.delete(path)
         },
         getFileUrl(config){
-          return `${url}view/${encodeURIComponent(config.path)}?token=${token}`;
+          // contents.getDownloadUrl(config.path)
+          const path = normalizePath(config.path)
+          return `${url}view/${encodeURIComponent(path)}?token=${token}`;
         },
         getFile(){
-
+          
         },
-        putFile(file){
-          throw "File upload is not supported"
+        async putFile(file, path, status){
+          api.showMessage(status)
+          return await uploadFile(contents, file, path+'/'+file.name, api.showMessage, api.showProgress);
+          // throw "File upload is not supported"
         },
         requestUploadUrl(config){
           console.log('generating upload url', config.path, config.dir)
@@ -267,7 +285,8 @@ class JupyterServer {
           return true
         }
       })
-      this.registered_file_managers[url] = url;
+      
+      this.registered_file_managers[url] = {url: url, contents: contents};
     }
 
     // localStorage.serverParams = JSON.stringify({ url, token })
@@ -371,6 +390,114 @@ class JupyterServer {
 }
 
 const jserver = new JupyterServer()
+
+let stop_upload_signal = false;
+function uploadFile(content_manager, file, path, display, progressbar){
+  
+  return new Promise((resolve, reject)=>{
+    var filename = file.name
+     // change buttons, add a progress bar
+    display("Uploading " + filename + '...');
+    var parse_large_file = function (f) {
+        // codes inspired by https://stackoverflow.com/a/28318964
+        // 8MB chunk size chosen to match chunk sizes used by benchmark reference (AWS S3)
+        var chunk_size = 1024 * 1024 * 8;
+        var offset = 0;
+        var chunk = 0;
+        var chunk_reader = null;
+
+        var large_reader_onload = function (event) {
+            if (stop_upload_signal === true) {
+                return;
+            }
+            if (event.target.error == null) {
+                offset += chunk_size;
+                if (offset >= f.size) {
+                    chunk = -1;
+                } else {
+                    chunk += 1;
+                }
+                // callback for handling reading: reader_onload in add_upload_button
+                upload_file(event.target.result, chunk);  // Do the upload
+            } else {
+                console.log("Read error: " + event.target.error);
+            }
+        };
+        var on_error = function (event) {
+            display("Failed to read file '" + file.name + "'");
+            reject("Failed to read file '" + file.name + "'");
+        };
+
+        chunk_reader = function (_offset, _f) {
+            var reader = new FileReader();
+            var blob = _f.slice(_offset, chunk_size + _offset);
+            // Load everything as ArrayBuffer
+            reader.readAsArrayBuffer(blob);
+            // Store the list item in the reader so we can use it later
+            // to know which item it belongs to.
+            reader.onload = large_reader_onload;
+            reader.onerror = on_error;
+        };
+
+        // This approach avoids triggering multiple GC pauses for large files.
+        // Borrowed from kanaka's answer at:
+        // https://stackoverflow.com/questions/12710001/how-to-convert-uint8-array-to-base64-encoded-string
+        var  Uint8ToString = function(u8a){
+            var CHUNK_SZ = 0x8000;
+            var c = [];
+            for (var i=0; i < u8a.length; i+=CHUNK_SZ) {
+              c.push(String.fromCharCode.apply(null, u8a.subarray(i, i+CHUNK_SZ)));
+            }
+            return c.join("");
+        };
+
+        // These codes to upload file in original class
+        var upload_file = function(filedata, chunk) {
+            if (filedata instanceof ArrayBuffer) {
+                // base64-encode binary file data
+                var buf = new Uint8Array(filedata);
+                filedata = btoa(Uint8ToString(buf));
+                format = 'base64';
+            }
+            var model = { name: filename, path: path };
+
+            // var name_and_ext = utils.splitext(filename);
+            // var file_ext = name_and_ext[1];
+            var content_type;
+            // Treat everything as generic file
+            model.type = 'file';
+            model.format = format;
+            content_type = 'application/octet-stream';
+
+            model.chunk = chunk;
+            model.content = filedata;
+
+            var on_success = function () {
+                if (offset < f.size) {
+                    // of to the next chunk
+                    chunk_reader(offset, f);
+                    // change progress bar and progress button
+                    var progress = offset / f.size * 100;
+                    progress = progress > 100 ? 100 : progress;
+                    display(`Uploading ${file.name } (${progress.toFixed(1)}%)...`)
+                    progressbar(progress)
+                } else {
+                    display('Upload finished.')
+                    resolve()
+                }
+            };
+
+            content_manager.save(path, model).then(on_success, on_error);
+        };
+
+        // now let's start the read with the first block
+        chunk_reader(offset, f);
+    };
+
+    parse_large_file(file);
+
+  })
+}
 
 
 async function setup() {
