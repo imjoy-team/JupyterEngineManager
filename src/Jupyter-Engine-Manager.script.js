@@ -226,6 +226,7 @@ class JupyterServer {
       const url = server_url;
       const token = server_token;
       let name = new URL(url);
+      let _file_list = []
       name = name.pathname === '/' ? name.hostname: name.pathname ;
       await api.register({
         type: 'file-manager',
@@ -237,6 +238,7 @@ class JupyterServer {
           const response = await fetch(file_url);
           const files = await response.json();
           files.children = files.content;
+          _file_list = files.content;
           console.log('listing files', file_url, files)
           return files
         },
@@ -249,8 +251,15 @@ class JupyterServer {
           const path = normalizePath(config.path)
           return `${url}view/${encodeURIComponent(path)}?token=${token}`;
         },
-        getFile(){
-          
+        async createFolder(folder_name){
+          let root = '.'
+          if(folder_name.includes('/')){
+            const p = folder_name.split('/')
+            root = p.slice(0, p.length-1).join('/')
+            folder_name = p[p.length-1]
+          }
+          const ret = await contents.newUntitled({path: root, type: 'directory'})
+          return await contents.rename(ret.path, normalizePath(root+'/'+folder_name))
         },
         async putFile(file, path){
           return await uploadFile(contents, file, path, api.showMessage, api.showProgress);
