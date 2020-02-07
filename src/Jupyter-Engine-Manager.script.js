@@ -252,20 +252,17 @@ class JupyterServer {
         getFile(){
           
         },
-        async putFile(file, path, status){
-          api.showMessage(status)
-          return await uploadFile(contents, file, path+'/'+file.name, api.showMessage, api.showProgress);
+        async putFile(file, path){
+          return await uploadFile(contents, file, path, api.showMessage, api.showProgress);
           // throw "File upload is not supported"
         },
         requestUploadUrl(config){
-          console.log('generating upload url', config.path, config.dir)
-          if(dir && path){
-            return `${url}api/contents/${encodeURIComponent(config.dir+config.path)}?token=${token}`;
-          }
-
-          if(path){
-            return `${url}api/contents/${encodeURIComponent(config.path)}?token=${token}`;
-          }
+          let path = normalizePath(config.path)
+          const dir = normalizePath(config.dir)
+          if(dir && !dir === '.') path = dir + '/' + path
+          if(path.startsWith('./')) path = path.slice(2)
+          console.log('generating upload url: ', path)
+          return `${url}api/contents/${encodeURIComponent(path)}?token=${token}`;
         },
         async heartbeat(){
           try{
