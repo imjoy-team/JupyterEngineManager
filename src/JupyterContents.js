@@ -72,7 +72,7 @@ export default class ContentsManager {
       if (firstParts.length === 1 || !this._additionalDrives.has(firstParts[0])) {
           return this._removeSlash(path);
       }
-      return path_join(firstParts.slice(1).join(':'), ...parts.slice(1));
+      return this._path_join(firstParts.slice(1).join(':'), ...parts.slice(1));
   }
   /**
    * Normalize a global path. Reduces '..' and '.' parts, and removes
@@ -167,7 +167,7 @@ export default class ContentsManager {
    *    file is created.
    */
 
-  path_join(...paths) {
+  _path_join(...paths) {
       var separator = '/';
       var replace   = new RegExp(separator+'{1,}', 'g');
       const path = paths.join(separator).replace(replace, separator);
@@ -181,7 +181,7 @@ export default class ContentsManager {
           return drive
               .newUntitled(Object.assign({}, options, { path: localPath }))
               .then(contentsModel => {
-              return Object.assign({}, contentsModel, { path: path_join(globalPath, contentsModel.name) });
+              return Object.assign({}, contentsModel, { path: this._path_join(globalPath, contentsModel.name) });
           });
       }
       else {
