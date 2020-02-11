@@ -63,6 +63,9 @@ const config =  (env, argv) => ({
     new CopyPlugin([
       { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'docs')}
     ]),
+    new CopyPlugin([
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Notebook.imjoy.html'), to: path.resolve(__dirname, 'docs')}
+    ]),
     new HtmlWebpackPlugin(
       {
         filename: 'Jupyter-Engine-Manager.imjoy.html',
