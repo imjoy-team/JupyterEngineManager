@@ -210,6 +210,7 @@ class JupyterServer {
       const {url, token} = await binder.startServer()
       server_url = url
       server_token = token
+      
       api.log('New server started: ' + url)
       this.cached_servers[config_str] = {url, token}
       localStorage.jupyter_servers = JSON.stringify(this.cached_servers)
@@ -910,7 +911,8 @@ async function createNewEngine(engine_config){
         }
         catch(e){
           console.error(e)
-          api.showMessage('Failed to connect to server ' + engine_config.nbUrl + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          throw e
         }
         let saved_engines = await api.getConfig('engines')
         try{
@@ -929,6 +931,7 @@ async function createNewEngine(engine_config){
         catch(e){
           console.error(e)
           api.showMessage('Failed to start server on MyBinder.org')
+          throw e
         } 
       }
     },
