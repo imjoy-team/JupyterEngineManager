@@ -219,6 +219,8 @@ class JupyterServer {
         wsUrl: baseToWsUrl(url),
         token: token,
       })
+
+      const kernelSpecs = await Kernel.getSpecs(serverSettings)
     }
 
     if(!this.registered_file_managers[server_url]){
@@ -227,6 +229,7 @@ class JupyterServer {
       const token = server_token;
       let name = new URL(url);
       let _file_list = []
+      let fail_count = 20;
       name = name.pathname === '/' ? name.hostname: name.pathname ;
       await api.register({
         type: 'file-manager',
@@ -278,13 +281,15 @@ class JupyterServer {
             await Kernel.getSpecs(serverSettings)
           }
           catch{
-            // console.log('Removing file manager.')
-            // api.unregister({
-            //   type: 'file-manager',
-            //   url: url
-            // })
-            // delete this.registered_file_managers[url]
-
+            fail_count--;
+            if(fail_count<=0){
+              console.log('Removing file manager.')
+              api.unregister({
+                type: 'file-manager',
+                url: url
+              })
+              delete this.registered_file_managers[url]
+            }
             return false
           }
           
@@ -324,7 +329,6 @@ class JupyterServer {
       api.log('Kernel started: ' + kernel.id)
       return kernel
     } catch (err) {
-      debugger
       console.error('Error in kernel initialization :(')
       throw err
     }
@@ -505,6 +509,11 @@ function uploadFile(content_manager, file, path, display, progressbar){
   })
 }
 
+async function pingServer(url){
+  const response = await fetch(url)
+  return response.status === 200
+}
+
 
 async function setup() {
   await api.register({
@@ -526,17 +535,17 @@ async function setup() {
     url: DEFAULT_BASE_URL,
     spec: DEFAULT_SPEC
   })
-  // let saved_engines = await api.getConfig('engines')
-  // try{
-  //     saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-  // }
-  // catch(e){
-  //   saved_engines = {}
-  // }
-  // for(let url in saved_engines){
-  //   const config = saved_engines[url]
-  //   createNewEngine(config)
-  // }
+  let saved_engines = await api.getConfig('engines')
+  try{
+      saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+  }
+  catch(e){
+    saved_engines = {}
+  }
+  for(let url in saved_engines){
+    const config = saved_engines[url]
+    createNewEngine(config)
+  }
   api.log('initialized')
 }
 
@@ -589,17 +598,8 @@ const description=`#### Jupyter Engine <sup>alpha</sup>
     })
     dialog.on('add', async (config)=>{
       dialog.close()
+      config.url = config.nbUrl.split('?')[0]
       createNewEngine(config)
-      // let saved_engines = await api.getConfig('engines')
-      // try{
-      //   saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-      // }
-      // catch(e){
-      //   saved_engines = {}
-      // }
-      // saved_engines[config.url] = config
-      // await api.setConfig('engines', JSON.stringify(saved_engines))
-
     })
 }
 
@@ -719,7 +719,6 @@ class JupyterConnection {
       }
 
       comm.onClose = msg => {
-        debugger;
         console.log('comm closed, reconnecting', id, msg);
         this.reconnect()
       };
@@ -902,13 +901,50 @@ async function createNewEngine(engine_config){
     pluginType: 'native-python',
     icon: '🚀',
     name: engine_config.name,
-    url: 'http://mybinder.org',
+    url: engine_config.url,
     config: engine_config,
-    connect(){
-      // return engine.connect();
+    async connect(){
+      if(engine_config.nbUrl){
+        try{
+          await jserver.startServer(engine_config)
+        }
+        catch(e){
+          console.error(e)
+          api.showMessage('Failed to connect to server ' + engine_config.nbUrl + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+        }
+        let saved_engines = await api.getConfig('engines')
+        try{
+          saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+        }
+        catch(e){
+          saved_engines = {}
+        }
+        saved_engines[engine_config.url] = engine_config
+        await api.setConfig('engines', JSON.stringify(saved_engines))
+      }
+      else{
+        try{
+          await jserver.startServer(engine_config)
+        }
+        catch(e){
+          console.error(e)
+          api.showMessage('Failed to start server on MyBinder.org')
+        } 
+      }
     },
     disconnect(){
       // return engine.disconnect();
+    },
+    async remove(){
+       let saved_engines = await api.getConfig('engines')
+        try{
+          saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+        }
+        catch(e){
+          saved_engines = {}
+        }
+        delete saved_engines[engine_config.url]
+        await api.setConfig('engines', JSON.stringify(saved_engines))
     },
     listPlugins: ()=>{
     },
@@ -916,88 +952,94 @@ async function createNewEngine(engine_config){
     },
     startPlugin: (config, interface)=>{
       return new Promise(async (resolve, reject) => {
-        let serverSettings, kernelSpecName=null;
-        if(engine_config.nbUrl){
-          serverSettings = await jserver.startServer(engine_config)
-        }
-        else{
-          if(!jserver.binder_confirmation_shown){
-            const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a> or use the <a href="https://imjoy.io/docs/#/user_manual?id=plugin-engine" target="_blank">ImJoy-Engine</a> for now. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
-            if(!ret){
-              reject("User canceled plugin execution.")
-              return
-            }
-            jserver.binder_confirmation_shown = true
+        try{
+          let serverSettings, kernelSpecName=null;
+          if(engine_config.nbUrl){
+            serverSettings = await jserver.startServer(engine_config)
           }
-          
-          if(interface.TAG && interface.TAG.includes('GPU')){
-            const ret = await api.confirm({title: "📌Running plugin that requires GPU?", content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
-            if(!ret){
-              reject("User canceled plugin execution.")
-              return
+          else {
+            if(!jserver.binder_confirmation_shown){
+              const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a> or use the <a href="https://imjoy.io/docs/#/user_manual?id=plugin-engine" target="_blank">ImJoy-Engine</a> for now. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
+              if(!ret){
+                reject("User canceled plugin execution.")
+                return
+              }
+              jserver.binder_confirmation_shown = true
             }
-          }
-          let binderSpec = DEFAULT_SPEC;
-          if(Array.isArray(config.env)){
-            for(let e of config.env){
-              if(e.type === 'binder' && e.spec){
-                binderSpec = e.spec
-                kernelSpecName = e.kernel
+            
+            if(interface.TAG && interface.TAG.includes('GPU')){
+              const ret = await api.confirm({title: "📌Running plugin that requires GPU?", content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
+              if(!ret){
+                reject("User canceled plugin execution.")
+                return
               }
             }
-          }
-          console.log('Starting server with binder spec', binderSpec)
-          engine_config.spec = binderSpec;
-          serverSettings = await jserver.startServer(engine_config);
-        }
-        
-        api.showMessage('🎉 Connected to Jupyter server: ' + serverSettings.baseUrl)
-        
-        const kernel = await jserver.startKernel(config.name, serverSettings, kernelSpecName)
-        await jserver.installRequirements(kernel, config.requirements, true);
-        kernel.pluginId = config.id;
-        kernel.pluginName = config.name;
-        kernel.onClose(()=>{
-          config.terminate()
-        })
-        // const kernel = await jserver.getOrStartKernel(config.name, serverSettings, config.requirements);
-        // kernel.statusChanged.connect(status => {
-        //   console.log('kernel status changed', kernel._id, status);
-        // });
-        console.log('Kernel started:', kernel._id, config.name, kernel)        
-        const connection = new JupyterConnection(config.id, 'native-python', config, kernel);
-        connection.onInit(()=>{
-          const site = new JailedSite(connection, "__plugin__", "javascript");
-          site.onInterfaceSetAsRemote(async ()=>{
-            api.showStatus('Executing plugin script for ' + config.name + '...')
-            for (let i = 0; i < config.scripts.length; i++) {
-              await connection.execute({
-                type: "script",
-                content: config.scripts[i].content,
-                lang: config.scripts[i].attrs.lang,
-                attrs: config.scripts[i].attrs,
-                src: config.scripts[i].attrs.src,
-              });
+            let binderSpec = DEFAULT_SPEC;
+            if(Array.isArray(config.env)){
+              for(let e of config.env){
+                if(e.type === 'binder' && e.spec){
+                  binderSpec = e.spec
+                  kernelSpecName = e.kernel
+                }
+              }
             }
-            site.onRemoteUpdate(() => {
-              const remote_api = site.getRemote();
-              console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
-              api.showStatus(`🎉Plugin "${config.name}" is ready.`)
-              resolve(remote_api)
-              site.onDisconnect((details) => {
-                config.terminate()
-              })
-            });
-            site.requestRemote();
-          });
-          site.onDisconnect((details) => {
-            console.log('disconnected.', details)
-            connection.disconnect()
-            reject('disconnected')
-          })
-          site.setInterface(interface);
-        })
+            console.log('Starting server with binder spec', binderSpec)
+            engine_config.spec = binderSpec;
+            serverSettings = await jserver.startServer(engine_config);
+          }
 
+          const kernel = await jserver.startKernel(config.name, serverSettings, kernelSpecName)
+
+          api.showMessage('🎉 Jupyter Kernel started (' + serverSettings.baseUrl + ')')
+          await jserver.installRequirements(kernel, config.requirements, true);
+          kernel.pluginId = config.id;
+          kernel.pluginName = config.name;
+          kernel.onClose(()=>{
+            config.terminate()
+          })
+          // const kernel = await jserver.getOrStartKernel(config.name, serverSettings, config.requirements);
+          // kernel.statusChanged.connect(status => {
+          //   console.log('kernel status changed', kernel._id, status);
+          // });
+          console.log('Kernel started:', kernel._id, config.name, kernel)        
+          const connection = new JupyterConnection(config.id, 'native-python', config, kernel);
+          connection.onInit(()=>{
+            const site = new JailedSite(connection, "__plugin__", "javascript");
+            site.onInterfaceSetAsRemote(async ()=>{
+              api.showStatus('Executing plugin script for ' + config.name + '...')
+              for (let i = 0; i < config.scripts.length; i++) {
+                await connection.execute({
+                  type: "script",
+                  content: config.scripts[i].content,
+                  lang: config.scripts[i].attrs.lang,
+                  attrs: config.scripts[i].attrs,
+                  src: config.scripts[i].attrs.src,
+                });
+              }
+              site.onRemoteUpdate(() => {
+                const remote_api = site.getRemote();
+                console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
+                api.showStatus(`🎉Plugin "${config.name}" is ready.`)
+                resolve(remote_api)
+                site.onDisconnect((details) => {
+                  config.terminate()
+                })
+              });
+              site.requestRemote();
+            });
+            site.onDisconnect((details) => {
+              console.log('disconnected.', details)
+              connection.disconnect()
+              reject('disconnected')
+            })
+            site.setInterface(interface);
+          })
+        }
+        catch(e){
+          console.error(e)
+          api.showMessage('Failed to start plugin ' + config.name + ', ' + e.toString())
+          reject(e)
+        }
       });
     },
     getEngineInfo() {
@@ -1151,7 +1193,7 @@ async function createNewEngine(engine_config){
       api.alert('An ImJoy Engine for Jupyter Servers.')
     }
   })
-  api.showMessage(`Plugin engine ${engine_config.name} connected.`)
+  
 }
 
 function removeEngine(){
