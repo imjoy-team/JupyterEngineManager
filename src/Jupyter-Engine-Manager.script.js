@@ -105,7 +105,7 @@ class JupyterServer {
       }
       if(jserver._kernels[kernel.id])
       if(kernel.shutdown){
-        kernel.shutdown().then(()=>{
+        kernel.shutdown().finally(()=>{
           delete jserver._kernels[kernel.id]
         })
       }
@@ -910,8 +910,14 @@ async function createNewEngine(engine_config){
           await jserver.startServer(engine_config)
         }
         catch(e){
-          console.error(e)
-          api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          if(e.toString().includes('403 Forbidden')){
+            console.error(e)
+            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe the token is wrong?')
+          }
+          else{
+            console.error(e)
+            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          } 
           throw e
         }
         let saved_engines = await api.getConfig('engines')
@@ -962,7 +968,7 @@ async function createNewEngine(engine_config){
           }
           else {
             if(!jserver.binder_confirmation_shown){
-              const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a> or use the <a href="https://imjoy.io/docs/#/user_manual?id=plugin-engine" target="_blank">ImJoy-Engine</a> for now. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
+              const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
               if(!ret){
                 reject("User canceled plugin execution.")
                 return
