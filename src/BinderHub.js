@@ -36,7 +36,7 @@ export default class BinderHub {
    *     when BinderHub transitions to that state.
    *
    * @param {String} [config.nbUrl] - Full URL of a running notebook server.
-   *     If set, NbInteract ignores all Binder config and will directly request
+   *     If set, BinderHub connection ignores all Binder config and will directly request
    *     Python kernels from the notebook server.
    *
    *     Defaults to `false`; by default we use Binder to start a notebook
@@ -86,7 +86,7 @@ export default class BinderHub {
 
       eventSource.onerror = err => {
         console.error(
-          'Failed to connect to Binder. Stopping nbinteract...',
+          'Failed to connect to Binder. Stopping BinderHub connection...',
           err,
         )
         eventSource.close()
@@ -103,7 +103,7 @@ export default class BinderHub {
 
       this.registerCallback('failed', (oldState, newState, data) => {
         console.error(
-          'Failed to build Binder image. Stopping nbinteract...',
+          'Failed to build Binder image. Stopping BinderHub connection...',
           data,
         )
         eventSource.close()
