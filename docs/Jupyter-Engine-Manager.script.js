@@ -79,6 +79,7 @@ class JupyterServer {
         delete this.cached_kernels[k]
       }
     }
+   
     localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels)
     setTimeout(this._kernelHeartbeat, seconds_between_check * 1000)
   }
@@ -105,7 +106,7 @@ class JupyterServer {
       }
       if(jserver._kernels[kernel.id])
       if(kernel.shutdown){
-        kernel.shutdown().then(()=>{
+        kernel.shutdown().finally(()=>{
           delete jserver._kernels[kernel.id]
         })
       }
@@ -175,6 +176,10 @@ class JupyterServer {
   } = {}){   
     let serverSettings = null;
     let server_url = null, server_token = null;
+
+    // clear cookie, so it will use token as authentication
+    document.cookie = null;
+
     const config_str = JSON.stringify({ name, spec, baseUrl, provider, nbUrl })
     if(this.cached_servers[config_str]){
       const {url, token} = this.cached_servers[config_str]
@@ -210,6 +215,7 @@ class JupyterServer {
       const {url, token} = await binder.startServer()
       server_url = url
       server_token = token
+      
       api.log('New server started: ' + url)
       this.cached_servers[config_str] = {url, token}
       localStorage.jupyter_servers = JSON.stringify(this.cached_servers)
@@ -222,6 +228,17 @@ class JupyterServer {
 
       const kernelSpecs = await Kernel.getSpecs(serverSettings)
     }
+
+    // const running_kernels = await Kernel.listRunning(serverSettings)
+    // for(let kernel_info of running_kernels){
+    //   kernel_info.shutdown = async ()=>{
+    //     const kernelModel = await Kernel.findById(kernel_info.id, serverSettings)
+    //     const kernel = await Kernel.connectTo(kernelModel, serverSettings)
+    //     return kernel.shutdown()
+    //   }
+    //   // this._kernels[kernel_info.id] = kernel_info
+    //   // kernels_info.push({name: kernel.name, pid: kernel.id})
+    // }
 
     if(!this.registered_file_managers[server_url]){
       const contents = new ContentsManager({serverSettings:serverSettings});
@@ -703,25 +720,7 @@ class JupyterConnection {
       console.log('kernel prepared...')
       this.initializing = false;
       this._disconnected = false;
-      this.comm = comm;
-      comm.onMsg = msg => {
-          var data = msg.content.data
-          if (["initialized",
-              "importSuccess",
-              "importFailure",
-              "executeSuccess",
-              "executeFailure"
-              ].includes(data.type)) {
-              this.handle_data_message(data)
-          } else {
-              this.handle_data_message({ type: 'message', data: data })
-          }
-      }
-
-      comm.onClose = msg => {
-        console.log('comm closed, reconnecting', id, msg);
-        this.reconnect()
-      };
+      this.setup_comm(comm)
 
       this.dedicatedThread = true;
       this._initHandler();
@@ -732,6 +731,27 @@ class JupyterConnection {
       this._failHandler("failed to initialize plugin on the plugin engine");
       throw "failed to initialize plugin on the plugin engine";
     })
+  }
+  setup_comm(comm){
+    this.comm = comm;
+    comm.onMsg = msg => {
+        var data = msg.content.data
+        if (["initialized",
+            "importSuccess",
+            "importFailure",
+            "executeSuccess",
+            "executeFailure"
+            ].includes(data.type)) {
+            this.handle_data_message(data)
+        } else {
+            this.handle_data_message({ type: 'message', data: data })
+        }
+    }
+
+    comm.onClose = msg => {
+      console.log('comm closed, reconnecting', id, msg);
+      this.reconnect()
+    };
   }
 
   handle_data_message(data){
@@ -822,17 +842,25 @@ class JupyterConnection {
   }
 
   reconnect() {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       console.log('reconnecting kernel...', this.kernel)
-      this.kernel.reconnect().then(()=>{
+      try{
+        const kernelModel = await Kernel.findById(this.kernel.id, this.kernel.serverSettings)
+        const kernel = await Kernel.connectTo(kernelModel, this.kernel.serverSettings)
+        await kernel.ready
+        this.kernel = kernel
         console.log('kernel reconnected')
-        this.comm = this.kernel.connectToComm('imjoy_comm_' + this.id);
-        console.log('comm reconnected')
-        resolve(this.comm)
-      }).catch((e)=>{
-        console.log('failed to reconnect kernel ', e)
-        // setTimeout(()=>{this.reconnect().then(resolve)}, 5000)
-      })
+        this.prepare_kernel(kernel, this.id).then((comm)=>{
+          console.log('comm reconnected', kernel, comm)
+          // this.setup_comm(comm)
+          resolve(comm)
+        })
+        // debugger
+      }
+      catch(e){
+        reject(e)
+      }
+      
     })
   }
 
@@ -844,12 +872,13 @@ class JupyterConnection {
         data: data,
       });
     } else {
-      this.reconnect().then(()=>{
-        this.comm.send({
-          type: "message",
-          data: data,
-        });
-      })
+      api.showMessage('kernel disconnected.')
+      // this.reconnect().then(()=>{
+      //   this.comm.send({
+      //     type: "message",
+      //     data: data,
+      //   });
+      // })
     }
   }
 
@@ -896,21 +925,21 @@ class JupyterConnection {
 }
 
 async function createNewEngine(engine_config){
-  await api.register({
-    type: 'engine',
-    pluginType: 'native-python',
-    icon: '🚀',
-    name: engine_config.name,
-    url: engine_config.url,
-    config: engine_config,
-    async connect(){
+  const connect = async ()=>{
       if(engine_config.nbUrl){
         try{
           await jserver.startServer(engine_config)
         }
         catch(e){
-          console.error(e)
-          api.showMessage('Failed to connect to server ' + engine_config.nbUrl + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          if(e.toString().includes('403 Forbidden')){
+            console.error(e)
+            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe the token is wrong?')
+          }
+          else{
+            console.error(e)
+            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+          } 
+          throw e
         }
         let saved_engines = await api.getConfig('engines')
         try{
@@ -929,9 +958,21 @@ async function createNewEngine(engine_config){
         catch(e){
           console.error(e)
           api.showMessage('Failed to start server on MyBinder.org')
+          throw e
         } 
       }
-    },
+  }
+
+  await connect()
+
+  await api.register({
+    type: 'engine',
+    pluginType: 'native-python',
+    icon: '🚀',
+    name: engine_config.name,
+    url: engine_config.url,
+    config: engine_config,
+    connect: connect,
     disconnect(){
       // return engine.disconnect();
     },
@@ -953,13 +994,13 @@ async function createNewEngine(engine_config){
     startPlugin: (config, interface)=>{
       return new Promise(async (resolve, reject) => {
         try{
-          let serverSettings, kernelSpecName=null;
+          let serverSettings, kernelSpecName=null, skipRequirements=false;
           if(engine_config.nbUrl){
             serverSettings = await jserver.startServer(engine_config)
           }
           else {
             if(!jserver.binder_confirmation_shown){
-              const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a> or use the <a href="https://imjoy.io/docs/#/user_manual?id=plugin-engine" target="_blank">ImJoy-Engine</a> for now. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
+              const ret = await api.confirm({title: "📌Notice: About to run plugin on mybinder.org", content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
               if(!ret){
                 reject("User canceled plugin execution.")
                 return
@@ -980,6 +1021,7 @@ async function createNewEngine(engine_config){
                 if(e.type === 'binder' && e.spec){
                   binderSpec = e.spec
                   kernelSpecName = e.kernel
+                  skipRequirements = e.skip_requirements
                 }
               }
             }
@@ -991,7 +1033,13 @@ async function createNewEngine(engine_config){
           const kernel = await jserver.startKernel(config.name, serverSettings, kernelSpecName)
 
           api.showMessage('🎉 Jupyter Kernel started (' + serverSettings.baseUrl + ')')
-          await jserver.installRequirements(kernel, config.requirements, true);
+          if(skipRequirements){
+            console.log('skipping requirements according to binder spec')
+          }
+          else {
+            await jserver.installRequirements(kernel, config.requirements, true);
+          }
+
           kernel.pluginId = config.id;
           kernel.pluginName = config.name;
           kernel.onClose(()=>{
@@ -1062,9 +1110,9 @@ async function createNewEngine(engine_config){
       //   })
       //   try{
       //     const kernels = await Kernel.listRunning(serverSettings)
-      //     for(let kernel of kernels){
-      //       kernels_info.push({name: kernel.name, pid: kernel.id})
-      //     }
+      //      for(let kernel of kernels){
+      //        kernels_info.push({name: kernel.name, pid: kernel.id,  baseUrl: url, wsUrl: baseToWsUrl(url), token: token})
+      //      }
       //   }
       //   catch(e){
       //     console.error('removing dead server:', e)
@@ -1078,13 +1126,35 @@ async function createNewEngine(engine_config){
       for(let k in jserver._kernels){
         const kernel = jserver._kernels[k]
         if(kernel.pluginId === config.id){
-          jserver.killKernel(kernel)
+          try{
+            jserver.killKernel(kernel)
+          }
+          catch(e){
+            console.error(e)
+          }
+          
         }
       }
     },
     async killPluginProcess(p) {
       // kernel.close()
-      await jserver.killKernel(jserver._kernels[p.pid])
+      try{
+        if(jserver._kernels[p.pid]){
+          await jserver.killKernel(jserver._kernels[p.pid])
+        }
+        else{
+          const serverSettings = ServerConnection.makeSettings(p)
+          const kernelModel = await Kernel.findById(p.pid, serverSettings)
+          const kernel = await Kernel.connectTo(kernelModel, serverSettings)
+          await kernel.shutdown()
+        }
+      }
+      catch(e){
+          console.error(e)
+      }
+      finally{
+        delete jserver._kernels[p.pid]
+      }
       // return engine.killPluginProcess(p)
     },
     heartbeat(){
@@ -1191,6 +1261,7 @@ async function createNewEngine(engine_config){
     },
     about(){
       api.alert('An ImJoy Engine for Jupyter Servers.')
+      console.log(jserver)
     }
   })
   
