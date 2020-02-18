@@ -178,7 +178,6 @@ class JupyterServer {
   } = {}){   
     let serverSettings = null;
     let server_url = null, server_token = null;
-    debugger
     // clear cookie, so it will use token as authentication
     document.cookie = null;
 
@@ -859,7 +858,6 @@ class JupyterConnection {
           // this.setup_comm(comm)
           resolve(comm)
         })
-        // debugger
       }
       catch(e){
         reject(e)
