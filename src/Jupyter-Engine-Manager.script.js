@@ -63,6 +63,8 @@ class JupyterServer {
     console.log('cached servers: ', this.cached_servers, 'cached kernels: ', this.cached_kernels)
 
     this._kernels = {}
+    
+    
     // Keep track of properties for debugging
     this.kernel = null
     this._kernelHeartbeat()
@@ -176,7 +178,6 @@ class JupyterServer {
   } = {}){   
     let serverSettings = null;
     let server_url = null, server_token = null;
-
     // clear cookie, so it will use token as authentication
     document.cookie = null;
 
@@ -217,8 +218,7 @@ class JupyterServer {
       server_token = token
       
       api.log('New server started: ' + url)
-      this.cached_servers[config_str] = {url, token}
-      localStorage.jupyter_servers = JSON.stringify(this.cached_servers)
+      
       // Connect to the notebook webserver.
       serverSettings = ServerConnection.makeSettings({
         baseUrl: url,
@@ -227,6 +227,9 @@ class JupyterServer {
       })
 
       const kernelSpecs = await Kernel.getSpecs(serverSettings)
+
+      this.cached_servers[config_str] = {url, token}
+      localStorage.jupyter_servers = JSON.stringify(this.cached_servers)
     }
 
     // const running_kernels = await Kernel.listRunning(serverSettings)
@@ -855,7 +858,6 @@ class JupyterConnection {
           // this.setup_comm(comm)
           resolve(comm)
         })
-        // debugger
       }
       catch(e){
         reject(e)
@@ -925,19 +927,31 @@ class JupyterConnection {
 }
 
 async function createNewEngine(engine_config){
-  const connect = async ()=>{
-      if(engine_config.nbUrl){
+  const engine_kernels = {}
+  await api.register({
+    type: 'engine',
+    pluginType: 'native-python',
+    icon: '🚀',
+    name: engine_config.name,
+    url: engine_config.url,
+    config: engine_config,
+    async connect(){
+       if(engine_config.nbUrl){
+        const serverUrl =  engine_config.nbUrl.split('?')[0] 
+        
         try{
+          api.showMessage('Connecting to server ' + serverUrl + '...')
           await jserver.startServer(engine_config)
+          api.showMessage('Connected to server ' + serverUrl + '.')
         }
         catch(e){
           if(e.toString().includes('403 Forbidden')){
             console.error(e)
-            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe the token is wrong?')
+            api.showMessage('Failed to connect to server ' +serverUrl+ ', maybe the token is wrong?')
           }
           else{
             console.error(e)
-            api.showMessage('Failed to connect to server ' + engine_config.nbUrl.split('?')[0] + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
+            api.showMessage('Failed to connect to server ' + serverUrl + ', maybe you forgot to enable CORS by adding "--NotebookApp.allow_origin=*"?')
           } 
           throw e
         }
@@ -953,26 +967,17 @@ async function createNewEngine(engine_config){
       }
       else{
         try{
-          await jserver.startServer(engine_config)
+          api.showMessage('Connecting to MyBinder...')
+          await pingServer(engine_config.url)
+          api.showMessage('Connected to MyBinder.')
         }
         catch(e){
           console.error(e)
           api.showMessage('Failed to start server on MyBinder.org')
           throw e
-        } 
+        }
       }
-  }
-
-  // await connect()
-
-  await api.register({
-    type: 'engine',
-    pluginType: 'native-python',
-    icon: '🚀',
-    name: engine_config.name,
-    url: engine_config.url,
-    config: engine_config,
-    connect: connect,
+    },
     disconnect(){
       // return engine.disconnect();
     },
@@ -1039,7 +1044,7 @@ async function createNewEngine(engine_config){
           else {
             await jserver.installRequirements(kernel, config.requirements, true);
           }
-
+          engine_kernels[kernel.id] = config.name
           kernel.pluginId = config.id;
           kernel.pluginName = config.name;
           kernel.onClose(()=>{
@@ -1096,28 +1101,29 @@ async function createNewEngine(engine_config){
     },
     async getEngineStatus() {
       const kernels_info = []
-      for(let k in jserver._kernels){
-        const kernel = jserver._kernels[k]
-        kernels_info.push({name: kernel.pluginName || kernel.name, pid: kernel.id})
-      }
-      // for(let k in jserver.cached_servers){
-      //   const {url, token} = jserver.cached_servers[k]
-      //   // Connect to the notebook webserver.
-      //   const serverSettings = ServerConnection.makeSettings({
-      //     baseUrl: url,
-      //     wsUrl: baseToWsUrl(url),
-      //     token: token,
-      //   })
-      //   try{
-      //     const kernels = await Kernel.listRunning(serverSettings)
-      //      for(let kernel of kernels){
-      //        kernels_info.push({name: kernel.name, pid: kernel.id,  baseUrl: url, wsUrl: baseToWsUrl(url), token: token})
-      //      }
-      //   }
-      //   catch(e){
-      //     console.error('removing dead server:', e)
-      //   }
+      // for(let k in jserver._kernels){
+      //   const kernel = jserver._kernels[k]
+      //   kernels_info.push({name: kernel.pluginName || kernel.name, pid: kernel.id})
       // }
+      for(let k in jserver.cached_servers){
+        const {url, token} = jserver.cached_servers[k]
+        // Connect to the notebook webserver.
+        const serverSettings = ServerConnection.makeSettings({
+          baseUrl: url,
+          wsUrl: baseToWsUrl(url),
+          token: token,
+        })
+        try{
+          const kernels = await Kernel.listRunning(serverSettings)
+           for(let kernel of kernels){
+             if(engine_kernels[kernel.id])
+              kernels_info.push({name: engine_kernels[kernel.id], pid: kernel.id,  baseUrl: url, wsUrl: baseToWsUrl(url), token: token})
+           }
+        }
+        catch(e){
+          console.error('removing dead server:', e)
+        }
+      }
       return {plugin_processes: kernels_info}
       // return engine.updateEngineStatus()
     },
