@@ -978,6 +978,7 @@ async function createNewEngine(engine_config){
           throw e
         }
       }
+      return true
     },
     disconnect(){
       // return engine.disconnect();
