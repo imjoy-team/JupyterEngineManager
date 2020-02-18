@@ -963,7 +963,7 @@ async function createNewEngine(engine_config){
       }
   }
 
-  await connect()
+  // await connect()
 
   await api.register({
     type: 'engine',
