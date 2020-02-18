@@ -178,6 +178,7 @@ class JupyterServer {
   } = {}){   
     let serverSettings = null;
     let server_url = null, server_token = null;
+
     // clear cookie, so it will use token as authentication
     document.cookie = null;
 
@@ -580,8 +581,7 @@ const description=`#### Jupyter Engine <sup>alpha</sup>
   2. Copy and paste the provided URL in "Jupyter Notebook URL" below. **⚠️Important**: the URL needs to contain the connection token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe
   3. Click "CONNECT TO JUPYTER"
 
-**Note 1**: This feature is still in development, and new features such as file uploading and terminal will be supported soon.
-**Note 2**: Due to security reasons, ImJoy cannot connect to remote notebook server served without <code>https</code>, for Chrome/Firefox, the only exception is the URL for localhost (127.0.0.1 or localhost, Safari can only be used with https URL).
+**Note**: Due to security reasons, ImJoy cannot connect to remote notebook server served without <code>https</code>, for Chrome/Firefox, the only exception is the URL for localhost (127.0.0.1 or localhost, Safari can only be used with https URL).
 `
     const dialog = await api.showDialog(
       {
@@ -942,7 +942,7 @@ async function createNewEngine(engine_config){
         try{
           api.showMessage('Connecting to server ' + serverUrl + '...')
           await jserver.startServer(engine_config)
-          api.showMessage('Connected to server ' + serverUrl + '.')
+          api.showMessage('🎉Connected to server ' + serverUrl + '.')
         }
         catch(e){
           if(e.toString().includes('403 Forbidden')){
@@ -969,7 +969,7 @@ async function createNewEngine(engine_config){
         try{
           api.showMessage('Connecting to MyBinder...')
           await pingServer(engine_config.url)
-          api.showMessage('Connected to MyBinder.')
+          api.showMessage('🎉Connected to MyBinder.')
         }
         catch(e){
           console.error(e)
@@ -977,6 +977,7 @@ async function createNewEngine(engine_config){
           throw e
         }
       }
+      return true
     },
     disconnect(){
       // return engine.disconnect();
