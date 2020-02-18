@@ -1,3 +1,4 @@
+import { ServerConnection } from '@jupyterlab/services'
 
 const SERVICE_DRIVE_URL = 'api/contents';
 /**

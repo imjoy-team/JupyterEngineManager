@@ -178,6 +178,7 @@ class JupyterServer {
   } = {}){   
     let serverSettings = null;
     let server_url = null, server_token = null;
+
     // clear cookie, so it will use token as authentication
     document.cookie = null;
 
