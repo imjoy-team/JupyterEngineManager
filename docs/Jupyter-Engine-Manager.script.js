@@ -300,6 +300,7 @@ class JupyterServer {
         async heartbeat(){
           try{
             await Kernel.getSpecs(serverSettings)
+            fail_count = 20;
           }
           catch{
             fail_count--;
@@ -310,10 +311,9 @@ class JupyterServer {
                 url: url
               })
               delete this.registered_file_managers[url]
+              return false
             }
-            return false
           }
-          
           return true
         }
       })
@@ -926,11 +926,14 @@ class JupyterConnection {
   }
 }
 
+const registered_engines = {}
 async function createNewEngine(engine_config){
   const engine_kernels = {}
+  let _connected = false;
   await api.register({
     type: 'engine',
     pluginType: 'native-python',
+    factory: 'Jupyter-Engine',
     icon: '🚀',
     name: engine_config.name,
     url: engine_config.url,
@@ -977,21 +980,20 @@ async function createNewEngine(engine_config){
           throw e
         }
       }
+      _connected = true;
       return true
     },
     disconnect(){
-      // return engine.disconnect();
-    },
-    async remove(){
-       let saved_engines = await api.getConfig('engines')
+      for(let kernel of Object.values(registered_engines[engine_config.name].kernels)){
         try{
-          saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+          // TODO: handle allow-detach flag
+          jserver.killKernel(kernel)
         }
         catch(e){
-          saved_engines = {}
+          console.error(e)
         }
-        delete saved_engines[engine_config.url]
-        await api.setConfig('engines', JSON.stringify(saved_engines))
+      }
+      _connected = false;
     },
     listPlugins: ()=>{
     },
@@ -999,6 +1001,10 @@ async function createNewEngine(engine_config){
     },
     startPlugin: (config, interface)=>{
       return new Promise(async (resolve, reject) => {
+        if(!_connected){
+          reject('Engine is disconnected.')
+          return
+        }
         try{
           let serverSettings, kernelSpecName=null, skipRequirements=false;
           if(engine_config.nbUrl){
@@ -1045,9 +1051,9 @@ async function createNewEngine(engine_config){
           else {
             await jserver.installRequirements(kernel, config.requirements, true);
           }
-          engine_kernels[kernel.id] = config.name
           kernel.pluginId = config.id;
           kernel.pluginName = config.name;
+          engine_kernels[kernel.id] = kernel
           kernel.onClose(()=>{
             config.terminate()
           })
@@ -1118,7 +1124,7 @@ async function createNewEngine(engine_config){
           const kernels = await Kernel.listRunning(serverSettings)
            for(let kernel of kernels){
              if(engine_kernels[kernel.id])
-              kernels_info.push({name: engine_kernels[kernel.id], pid: kernel.id,  baseUrl: url, wsUrl: baseToWsUrl(url), token: token})
+              kernels_info.push({name: engine_kernels[kernel.id].pluginName, pid: kernel.id,  baseUrl: url, wsUrl: baseToWsUrl(url), token: token})
            }
         }
         catch(e){
@@ -1165,7 +1171,7 @@ async function createNewEngine(engine_config){
       // return engine.killPluginProcess(p)
     },
     heartbeat(){
-      return true;
+      return _connected;
     },
     async startTerminal(){
       if(Object.keys(jserver.cached_servers).length <=0){
@@ -1271,10 +1277,37 @@ async function createNewEngine(engine_config){
       console.log(jserver)
     }
   })
+
+  registered_engines[engine_config.name] = {kernels: engine_kernels, disconnect: ()=>{ 
+    for(let kernel of Object.values(registered_engines[engine_config.name].kernels)){
+        try{
+          jserver.killKernel(kernel)
+        }
+        catch(e){
+          console.error(e)
+        }
+      }
+      _connected = false;
+  }}
   
 }
 
-function removeEngine(){
+async function removeEngine(engine_config){
+  if(await api.confirm(`Do you really want to remove the engine ${engine_config.name}?`)){
+    if(registered_engines[engine_config.name]) {
+      registered_engines[engine_config.name].disconnect()
+    }
+    let saved_engines = await api.getConfig('engines')
+    try{
+      saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+    }
+    catch(e){
+      saved_engines = {}
+    }
+    delete saved_engines[engine_config.url]
+    await api.setConfig('engines', JSON.stringify(saved_engines))
+    return true
+  }
 
 }
 

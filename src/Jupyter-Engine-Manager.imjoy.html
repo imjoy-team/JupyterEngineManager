@@ -9,22 +9,22 @@ via [mybinder.org](https://mybinder.org) or connect to a local Jupyter notebook 
 <config lang="json">
 {
     "name": "Jupyter-Engine-Manager",
-    "type": "iframe",
+    "type": "evil",
     "tags": [],
     "ui": "",
-    "version": "0.3.14",
+    "version": "PLUGIN_VERSION",
     "cover": "",
     "description": "This plugin uses Jupyter notebook servers as engine backend, it can either spwan Jupyter notebook servers via [mybinder.org](https://mybinder.org) or connect to a local Jupyter notebook server.",
     "icon": "extension",
     "inputs": null,
     "outputs": null,
-    "api_version": "0.1.6",
+    "api_version": "0.1.7",
     "env": "",
     "permissions": [],
     "requirements": [
                     "https://lib.imjoy.io/static/jailed/_JailedSite.js",
-                    "STATIC_SERVER_URL/index.bundle.js", 
-                    "STATIC_SERVER_URL/Jupyter-Engine-Manager.script.js"
+                    "STATIC_SERVER_URL/index.bundle.js?version=PLUGIN_VERSION", 
+                    "STATIC_SERVER_URL/Jupyter-Engine-Manager.script.js?version=PLUGIN_VERSION"
                     ],
     "dependencies": [],
     "runnable": false,
