@@ -567,13 +567,17 @@ async function setup() {
     removeEngine: removeEngine
   })
 
-  createNewEngine({
-    name: 'MyBinder Engine',
-    url: DEFAULT_BASE_URL,
-    spec: DEFAULT_SPEC
-  })
+  // create the binder plugin for the first time
+  const temp = await api.getConfig('engines')
+  if(!temp){
+    createNewEngine({
+      name: 'MyBinder Engine',
+      url: DEFAULT_BASE_URL,
+      spec: DEFAULT_SPEC,
+      connected: true
+    })
+  }
 
-  
   let saved_engines = await save_engine_config()
   for(let url in saved_engines){
     const config = saved_engines[url]
@@ -631,6 +635,7 @@ const description=`#### Jupyter Engine <sup>alpha</sup>
     dialog.on('add', async (config)=>{
       dialog.close()
       config.url = config.nbUrl.split('?')[0]
+      config.connected = true
       createNewEngine(config)
     })
 }
@@ -695,6 +700,7 @@ const description=`### MyBinder Engine <sup>alpha</sup>
     })
     dialog.on('add', async (config)=>{
       dialog.close()
+      config.connected = true
       createNewEngine(config)
     })
 }
