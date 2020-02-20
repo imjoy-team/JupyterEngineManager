@@ -892,7 +892,7 @@ class JupyterConnection {
         data: data,
       });
     } else {
-      api.showMessage('kernel disconnected.')
+      api.showMessage('The jupyter kernel is disconnected, maybe try to reload the plugin?')
       // this.reconnect().then(()=>{
       //   this.comm.send({
       //     type: "message",
