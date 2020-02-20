@@ -25,6 +25,22 @@ function normalizePath(path){
   function n(s){return s.replace(/\/+/g,'/').replace(/\w+\/+\.\./g,'')}
   return path.replace(/^\//,'').replace(/\/$/,'');
 }
+
+async function save_engine_config(engine_config){
+  let saved_engines = await api.getConfig('engines')
+  try{
+    saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+  }
+  catch(e){
+    saved_engines = {}
+  }
+  if(engine_config){
+    saved_engines[engine_config.url] = engine_config
+  }
+  await api.setConfig('engines', JSON.stringify(saved_engines))
+  return saved_engines
+}
+
 class JupyterServer {
   constructor() {
     // this._kernelHeartbeat = this._kernelHeartbeat.bind(this)
@@ -556,13 +572,9 @@ async function setup() {
     url: DEFAULT_BASE_URL,
     spec: DEFAULT_SPEC
   })
-  let saved_engines = await api.getConfig('engines')
-  try{
-      saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-  }
-  catch(e){
-    saved_engines = {}
-  }
+
+  
+  let saved_engines = await save_engine_config()
   for(let url in saved_engines){
     const config = saved_engines[url]
     createNewEngine(config)
@@ -928,18 +940,6 @@ class JupyterConnection {
 
 const registered_engines = {}
 
-function save_engine_config(engine_config){
-  let saved_engines = await api.getConfig('engines')
-  try{
-    saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-  }
-  catch(e){
-    saved_engines = {}
-  }
-  saved_engines[engine_config.url] = engine_config
-  await api.setConfig('engines', JSON.stringify(saved_engines))
-}
-
 async function createNewEngine(engine_config){
   const engine_kernels = {}
   let _connected = false;
@@ -977,15 +977,6 @@ async function createNewEngine(engine_config){
           } 
           throw e
         }
-        let saved_engines = await api.getConfig('engines')
-        try{
-          saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-        }
-        catch(e){
-          saved_engines = {}
-        }
-        saved_engines[engine_config.url] = engine_config
-        await api.setConfig('engines', JSON.stringify(saved_engines))
       }
       else{
         try{
@@ -1001,10 +992,10 @@ async function createNewEngine(engine_config){
       }
       _connected = true;
       engine_config.connected = true
-      save_engine_config(engine_config)
+      await save_engine_config(engine_config)
       return true
     },
-    disconnect(){
+    async disconnect(){
       if(registered_engines[engine_config.name]){
         for(let kernel of Object.values(registered_engines[engine_config.name].kernels)){
           try{
@@ -1015,11 +1006,12 @@ async function createNewEngine(engine_config){
             console.error(e)
           }
         }
+        registered_engines[engine_config.name].kernels = []
       }
       
       _connected = false;
       engine_config.connected = false
-      save_engine_config(engine_config)
+      await save_engine_config(engine_config)
     },
     listPlugins: ()=>{
     },
@@ -1323,13 +1315,7 @@ async function removeEngine(engine_config){
     if(registered_engines[engine_config.name]) {
       registered_engines[engine_config.name].disconnect()
     }
-    let saved_engines = await api.getConfig('engines')
-    try{
-      saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
-    }
-    catch(e){
-      saved_engines = {}
-    }
+    let saved_engines = await save_engine_config()
     delete saved_engines[engine_config.url]
     await api.setConfig('engines', JSON.stringify(saved_engines))
     return true
