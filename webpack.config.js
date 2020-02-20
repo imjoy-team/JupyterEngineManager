@@ -79,6 +79,12 @@ const config =  (env, argv) => ({
         replacement: argv.mode === 'production'?'https://imjoy-team.github.io/jupyter-engine-manager':'http://127.0.0.1:9090',
       }]
     ),
+    new HtmlReplaceWebpackPlugin([
+      {
+        pattern: 'PLUGIN_VERSION',
+        replacement: require("./package.json").version
+      }]
+    ),
     new BundleAnalyzerPlugin({
       analyzerMode: 'static',
       openAnalyzer: false,
