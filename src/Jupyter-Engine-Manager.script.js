@@ -927,9 +927,23 @@ class JupyterConnection {
 }
 
 const registered_engines = {}
+
+function save_engine_config(engine_config){
+  let saved_engines = await api.getConfig('engines')
+  try{
+    saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+  }
+  catch(e){
+    saved_engines = {}
+  }
+  saved_engines[engine_config.url] = engine_config
+  await api.setConfig('engines', JSON.stringify(saved_engines))
+}
+
 async function createNewEngine(engine_config){
   const engine_kernels = {}
   let _connected = false;
+  let initial_connection = engine_config.connected;
   await api.register({
     type: 'engine',
     pluginType: 'native-python',
@@ -939,6 +953,11 @@ async function createNewEngine(engine_config){
     url: engine_config.url,
     config: engine_config,
     async connect(){
+      // do not connect for the first time if the engine was disconnected
+      if(!initial_connection){
+        initial_connection = true
+        return false
+      }
        if(engine_config.nbUrl){
         const serverUrl =  engine_config.nbUrl.split('?')[0] 
         
@@ -981,19 +1000,26 @@ async function createNewEngine(engine_config){
         }
       }
       _connected = true;
+      engine_config.connected = true
+      save_engine_config(engine_config)
       return true
     },
     disconnect(){
-      for(let kernel of Object.values(registered_engines[engine_config.name].kernels)){
-        try{
-          // TODO: handle allow-detach flag
-          jserver.killKernel(kernel)
-        }
-        catch(e){
-          console.error(e)
+      if(registered_engines[engine_config.name]){
+        for(let kernel of Object.values(registered_engines[engine_config.name].kernels)){
+          try{
+            // TODO: handle allow-detach flag
+            jserver.killKernel(kernel)
+          }
+          catch(e){
+            console.error(e)
+          }
         }
       }
+      
       _connected = false;
+      engine_config.connected = false
+      save_engine_config(engine_config)
     },
     listPlugins: ()=>{
     },
