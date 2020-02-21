@@ -719,6 +719,7 @@ class JupyterConnection {
     this._failHandler = () => {};
     this._disconnectHandler = () => {};
     this._loggingHandler = () => {};
+    this._messageHandler = () => {};
     this.kernel = kernel;
 
     const config_ = {
