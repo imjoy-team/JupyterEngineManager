@@ -233,7 +233,7 @@ class JupyterServer {
       const {url, token} = await binder.startServer()
       server_url = url
       server_token = token
-      
+
       api.log('New server started: ' + url)
       
       // Connect to the notebook webserver.
@@ -1024,7 +1024,7 @@ async function createNewEngine(engine_config){
     },
     getPlugin: ()=>{
     },
-    startPlugin: (config, interface)=>{
+    startPlugin: (config, imjoy_interface)=>{
       return new Promise(async (resolve, reject) => {
         if(!_connected){
           reject('Engine is disconnected.')
@@ -1045,7 +1045,7 @@ async function createNewEngine(engine_config){
               jserver.binder_confirmation_shown = true
             }
             
-            if(interface.TAG && interface.TAG.includes('GPU')){
+            if(imjoy_interface.TAG && imjoy_interface.TAG.includes('GPU')){
               const ret = await api.confirm({title: "📌Running plugin that requires GPU?", content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`, confirm_text: 'Yes'})
               if(!ret){
                 reject("User canceled plugin execution.")
@@ -1117,7 +1117,9 @@ async function createNewEngine(engine_config){
               connection.disconnect()
               reject('disconnected')
             })
-            site.setInterface(interface);
+            imjoy_interface.ENGINE_URL = kernel.serverSettings.baseUrl;
+            imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
+            site.setInterface(imjoy_interface);
           })
         }
         catch(e){
