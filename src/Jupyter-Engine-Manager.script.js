@@ -1103,6 +1103,8 @@ async function createNewEngine(engine_config){
               }
               site.onRemoteUpdate(() => {
                 const remote_api = site.getRemote();
+                remote_api.ENGINE_URL = engine_config.url
+                remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl
                 console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
                 api.showStatus(`🎉Plugin "${config.name}" is ready.`)
                 resolve(remote_api)
@@ -1117,7 +1119,7 @@ async function createNewEngine(engine_config){
               connection.disconnect()
               reject('disconnected')
             })
-            imjoy_interface.ENGINE_URL = kernel.serverSettings.baseUrl;
+            imjoy_interface.ENGINE_URL = engine_config.url;
             imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
             site.setInterface(imjoy_interface);
           })
@@ -1129,9 +1131,8 @@ async function createNewEngine(engine_config){
         }
       });
     },
-    getEngineInfo() {
+    getEngineConfig() {
       return {}
-      // return engine.engine_info;
     },
     async getEngineStatus() {
       const kernels_info = []
