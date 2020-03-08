@@ -1024,7 +1024,7 @@ async function createNewEngine(engine_config){
     },
     getPlugin: ()=>{
     },
-    startPlugin: (config, imjoy_interface)=>{
+    startPlugin: (config, imjoy_interface, engine_utils)=>{
       return new Promise(async (resolve, reject) => {
         if(!_connected){
           reject('Engine is disconnected.')
@@ -1080,7 +1080,7 @@ async function createNewEngine(engine_config){
           kernel.pluginName = config.name;
           engine_kernels[kernel.id] = kernel
           kernel.onClose(()=>{
-            imjoy_interface.terminatePlugin()
+            engine_utils.terminatePlugin()
           })
           // const kernel = await jserver.getOrStartKernel(config.name, serverSettings, config.requirements);
           // kernel.statusChanged.connect(status => {
@@ -1114,14 +1114,14 @@ async function createNewEngine(engine_config){
             site.onDisconnect((details) => {
               console.log('disconnected.', details)
               connection.disconnect()
-              imjoy_interface.terminatePlugin()
+              engine_utils.terminatePlugin()
               reject('disconnected')
             })
             site.onRemoteReady(()=>{
-              imjoy_interface.setPluginStatus({running: false});
+              engine_utils.setPluginStatus({running: false});
             })
             site.onRemoteBusy(()=>{
-              imjoy_interface.setPluginStatus({running: true});
+              engine_utils.setPluginStatus({running: true});
             })
             imjoy_interface.ENGINE_URL = engine_config.url;
             imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
