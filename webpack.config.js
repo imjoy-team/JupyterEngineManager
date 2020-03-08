@@ -22,11 +22,11 @@ const config =  (env, argv) => ({
   },
   output: {
     filename: 'index.bundle.js',
-    path: path.resolve(__dirname, 'docs'),
+    path: path.resolve(__dirname, 'dist'),
   },
   devtool: 'cheap-module-eval-source-map',
   devServer: {
-    contentBase: path.resolve(__dirname, 'docs'),
+    contentBase: path.resolve(__dirname, 'dist'),
     publicPath: '/',
     port: 9090,
     hot: true,
@@ -59,12 +59,12 @@ const config =  (env, argv) => ({
     shim(/@jupyterlab\/coreutils\/lib\/(time|settingregistry|.*menu.*)/),
     shim(/@jupyterlab\/services\/lib\/(session|contents|terminal)\/.*/),
 
-    // new CleanWebpackPlugin(['docs']),
+    // new CleanWebpackPlugin(['dist']),
     new CopyPlugin([
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'docs')}
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'dist')}
     ]),
     new CopyPlugin([
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Notebook.imjoy.html'), to: path.resolve(__dirname, 'docs')}
+      { from: path.resolve(__dirname, 'src', 'Jupyter-Notebook.imjoy.html'), to: path.resolve(__dirname, 'dist')}
     ]),
     new HtmlWebpackPlugin(
       {
