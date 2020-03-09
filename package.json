@@ -27,7 +27,7 @@
     "widgets"
   ],
   "author": "imjoy-team <imjoy.team@gmail.com>",
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/imjoy-team/jupyter-engine-manager/issues"
   },
