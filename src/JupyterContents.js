@@ -1,3 +1,8 @@
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
+
+// This code has been modified by the imjoy-team authors 2019.
+
 import { ServerConnection } from '@jupyterlab/services'
 
 const SERVICE_DRIVE_URL = 'api/contents';

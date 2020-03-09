@@ -26,8 +26,8 @@
     "interactive",
     "widgets"
   ],
-  "author": "Sam Lau",
-  "license": "BSD-3-Clause",
+  "author": "imjoy-team <imjoy.team@gmail.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/imjoy-team/jupyter-engine-manager/issues"
   },
