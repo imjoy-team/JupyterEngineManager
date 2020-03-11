@@ -35,6 +35,11 @@ async function save_engine_config(engine_config){
     saved_engines = {}
   }
   if(engine_config){
+    for(let k in saved_engines){
+      if(saved_engines[k].name === engine_config.name){
+        delete saved_engines[k];
+      }
+    }
     saved_engines[engine_config.url] = engine_config
   }
   await api.setConfig('engines', JSON.stringify(saved_engines))
@@ -715,11 +720,12 @@ class JupyterConnection {
   constructor(id, type, config, kernel) {
     this._disconnected = false;
     this.id = id;
-    this._initHandler = () => {};
     this._failHandler = () => {};
     this._disconnectHandler = () => {};
     this._loggingHandler = () => {};
     this._messageHandler = () => {};
+    this._initHandler = () => {};
+
     this.kernel = kernel;
 
     const config_ = {
@@ -738,42 +744,48 @@ class JupyterConnection {
 
     console.log('init_plugin...', config)
 
-    this.prepare_kernel(kernel, id).then((comm)=>{
+    
+  }
+  async init(){
+    try{
+      const comm = await this.prepare_kernel(this.kernel, this.id)
       console.log('kernel prepared...')
       this.initializing = false;
       this._disconnected = false;
-      this.setup_comm(comm)
-
-      this.dedicatedThread = true;
-      this._initHandler();
-    
-    }).catch(()=>{
+      await this.setup_comm(comm)
+    }
+    catch(e){
       this._disconnected = true;
-      console.error("failed to initialize plugin on the plugin engine");
+      console.error("failed to initialize plugin on the plugin engine", e);
       this._failHandler("failed to initialize plugin on the plugin engine");
       throw "failed to initialize plugin on the plugin engine";
-    })
-  }
-  setup_comm(comm){
-    this.comm = comm;
-    comm.onMsg = msg => {
-        var data = msg.content.data
-        if (["initialized",
-            "importSuccess",
-            "importFailure",
-            "executeSuccess",
-            "executeFailure"
-            ].includes(data.type)) {
-            this.handle_data_message(data)
-        } else {
-            this.handle_data_message({ type: 'message', data: data })
-        }
     }
+  }
 
-    comm.onClose = msg => {
-      console.log('comm closed, reconnecting', id, msg);
-      this.reconnect()
-    };
+  setup_comm(comm){
+    return new Promise((resolve, reject)=>{
+        this._initHandler = resolve
+        this.comm = comm;
+        comm.onMsg = msg => {
+            var data = msg.content.data
+            if (["initialized",
+                "importSuccess",
+                "importFailure",
+                "executeSuccess",
+                "executeFailure"
+                ].includes(data.type)) {
+                this.handle_data_message(data)
+            } else {
+                this.handle_data_message({ type: 'message', data: data })
+            }
+        }
+
+        comm.onClose = msg => {
+          console.log('comm closed, reconnecting', id, msg);
+          this.reconnect()
+          reject('Comm is closed');
+        };
+    })
   }
 
   handle_data_message(data){
@@ -791,10 +803,7 @@ class JupyterConnection {
         case "message":
           data = data.data
           // console.log('message_from_plugin_'+this.secret, data)
-          if (data.type == "initialized") {
-            this.dedicatedThread = data.dedicatedThread;
-            this._initHandler();
-          } else if (data.type == "logging") {
+          if (data.type == "logging") {
             this._loggingHandler(data.details);
           } else if (data.type == "disconnected") {
             this._disconnectHandler(data.details);
@@ -818,48 +827,64 @@ class JupyterConnection {
     }
   }
 
-  prepare_kernel(kernel, plugin_id) {
-    return new Promise(async (resolve, reject) => {
-      console.log('installing imjoy...')
-      api.showStatus('Setting up ImJoy worker...')
-      let execution = kernel.requestExecute({ code: '!pip install -U imjoy' })
-      console.log(kernel, execution)
-      execution.onIOPub = msg => {
-        if(msg.msg_type == 'stream'){
-          if(msg.content.name == 'stdout'){
-            api.showStatus(msg.content.text)
-          }
-        }
-      }
-      const client_id = plugin_id;
-      execution.done.then(()=>{
-        console.log('starting jupyter client ...', client_id)
-        kernel.requestExecute({ code: `from imjoy.workers.jupyter_client import JupyterClient;JupyterClient.recover_client("${client_id}")` }).done.then(()=>{
-          kernel.registerCommTarget(
-              'imjoy_comm_' + client_id,
-              function (comm, open_msg) {
-
-                //var config = open_msg.content.data
-                //pio.emit("message_from_plugin_" + id, {'type': 'init_plugin', 'id': config.id, 'config': config});       
-                resolve(comm)
-              }
-          )
-          console.log('connecting ImJoy worker...')
-          const command = `from imjoy.workers.python_worker import PluginConnection as __plugin_connection__;__plugin_connection__.add_plugin("${plugin_id}", "${client_id}").start()`;
-          execution = kernel.requestExecute({ code: command })
-          execution.onIOPub = msg => {
-            if(msg.msg_type == 'stream'){
-              if(msg.content.name == 'stdout'){
-                api.showStatus(msg.content.text)
-              }
+  execute_code(kernel, code){
+    return new Promise((resolve, reject) => {
+        const execution = kernel.requestExecute({ code: code })
+        console.log(kernel, execution)
+        execution.onIOPub = msg => {
+          if(msg.msg_type == 'stream'){
+            if(msg.content.name == 'stdout'){
+              api.showStatus(msg.content.text)
             }
           }
-          execution.done.then(()=>{
-            api.showStatus('ImJoy worker is ready.')
-            console.log('ImJoy worker connected...')
-          }).catch(reject);  
-        })
-      });
+        }
+        execution.done.then((reply)=>{
+          if(reply.content.status !== 'ok'){
+            let error_msg = ''
+            for(let data of reply.content.traceback){
+              data = util.fixOverwrittenChars(data);
+              // escape ANSI & HTML specials in plaintext:
+              data = util.fixConsole(data);
+              // data = util.autoLinkUrls(data);
+              error_msg += data
+            }
+            api.showStatus(error_msg)
+            console.error(error_msg)
+            reject(error_msg)
+            return 
+          }
+          resolve(reply.content)
+        }).catch(reject)
+    })
+  }
+
+  prepare_kernel(kernel, plugin_id) {
+    return new Promise(async (resolve, reject) => {
+      try{
+        console.log('installing imjoy...')
+        api.showStatus('Setting up ImJoy worker...')
+        await this.execute_code(kernel, '!pip install -U imjoy')
+        const client_id = plugin_id;
+        console.log('starting jupyter client ...', client_id)
+        await this.execute_code(kernel, `from imjoy.workers.jupyter_client import JupyterClient;JupyterClient.recover_client("${client_id}")` )
+        kernel.registerCommTarget(
+            'imjoy_comm_' + client_id,
+            function (comm, open_msg) {
+              //var config = open_msg.content.data
+              //pio.emit("message_from_plugin_" + id, {'type': 'init_plugin', 'id': config.id, 'config': config});       
+              resolve(comm)
+            }
+        )
+        console.log('connecting ImJoy worker...')
+        const command = `from imjoy.workers.python_worker import PluginConnection as __plugin_connection__;__plugin_connection__.add_plugin("${plugin_id}", "${client_id}").start()`;
+        await this.execute_code(kernel, command)
+        api.showStatus('ImJoy worker is ready.')
+        console.log('ImJoy worker connected...')
+      }
+      catch(e){
+        console.error('Failed to prepare kernel: ', e)
+        reject(e)
+      }
     });
   }
 
@@ -934,10 +959,6 @@ class JupyterConnection {
 
   onLogging(handler) {
     this._loggingHandler = handler;
-  }
-
-  onInit(handler) {
-    this._initHandler = handler;
   }
 
   onFailed(handler) {
@@ -1088,45 +1109,45 @@ async function createNewEngine(engine_config){
           // });
           console.log('Kernel started:', kernel._id, config.name, kernel)        
           const connection = new JupyterConnection(config.id, 'native-python', config, kernel);
-          connection.onInit(()=>{
-            const site = new JailedSite(connection, "__plugin__", "javascript");
-            site.onInterfaceSetAsRemote(async ()=>{
-              api.showStatus('Executing plugin script for ' + config.name + '...')
-              for (let i = 0; i < config.scripts.length; i++) {
-                await connection.execute({
-                  type: "script",
-                  content: config.scripts[i].content,
-                  lang: config.scripts[i].attrs.lang,
-                  attrs: config.scripts[i].attrs,
-                  src: config.scripts[i].attrs.src,
-                });
-              }
-              site.onRemoteUpdate(() => {
-                const remote_api = site.getRemote();
-                remote_api.ENGINE_URL = engine_config.url
-                remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl
-                console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
-                api.showStatus(`🎉Plugin "${config.name}" is ready.`)
-                resolve(remote_api)
+          await connection.init()
+          const site = new JailedSite(connection, "__plugin__", "javascript");
+          site.onInterfaceSetAsRemote(async ()=>{
+            api.showStatus('Executing plugin script for ' + config.name + '...')
+            for (let i = 0; i < config.scripts.length; i++) {
+              await connection.execute({
+                type: "script",
+                content: config.scripts[i].content,
+                lang: config.scripts[i].attrs.lang,
+                attrs: config.scripts[i].attrs,
+                src: config.scripts[i].attrs.src,
               });
-              site.requestRemote();
+            }
+            site.onRemoteUpdate(() => {
+              const remote_api = site.getRemote();
+              remote_api.ENGINE_URL = engine_config.url
+              remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl
+              console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
+              api.showStatus(`🎉Plugin "${config.name}" is ready.`)
+              resolve(remote_api)
             });
-            site.onDisconnect((details) => {
-              console.log('disconnected.', details)
-              connection.disconnect()
-              engine_utils.terminatePlugin()
-              reject('disconnected')
-            })
-            site.onRemoteReady(()=>{
-              engine_utils.setPluginStatus({running: false});
-            })
-            site.onRemoteBusy(()=>{
-              engine_utils.setPluginStatus({running: true});
-            })
-            imjoy_interface.ENGINE_URL = engine_config.url;
-            imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
-            site.setInterface(imjoy_interface);
+            site.requestRemote();
+          });
+          site.onDisconnect((details) => {
+            console.log('disconnected.', details)
+            connection.disconnect()
+            engine_utils.terminatePlugin()
+            reject('disconnected')
           })
+          site.onRemoteReady(()=>{
+            engine_utils.setPluginStatus({running: false});
+          })
+          site.onRemoteBusy(()=>{
+            engine_utils.setPluginStatus({running: true});
+          })
+          imjoy_interface.ENGINE_URL = engine_config.url;
+          imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
+          site.setInterface(imjoy_interface);
+  
         }
         catch(e){
           console.error(e)
