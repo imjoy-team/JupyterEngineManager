@@ -372,3 +372,120 @@ export function autoLinkUrls(txt) {
       "$1<a target=\"_blank\" href=\"$2$3\">$2$3</a>");
 }
 
+
+export function put_buffers(
+  state,
+  buffer_paths,
+  buffers
+){
+  buffers = buffers.map(b => {
+    if (b instanceof DataView) {
+        return b;
+    } else {
+        return new DataView(b instanceof ArrayBuffer ? b : b.buffer);
+    }
+  });
+  for (let i = 0; i < buffer_paths.length; i++) {
+    const buffer_path = buffer_paths[i];
+    // say we want to set state[x][y][z] = buffers[i]
+    let obj = state;
+    // we first get obj = state[x][y]
+    for (let j = 0; j < buffer_path.length - 1; j++) {
+      obj = obj[buffer_path[j]];
+    }
+    // and then set: obj[z] = buffers[i]
+    obj[buffer_path[buffer_path.length - 1]] = buffers[i];
+  }
+}
+
+
+function isSerializable(object){
+    return typeof object === 'object' && object && object.toJSON;
+}
+
+function isObject (value) {
+    return value && typeof value === 'object' && value.constructor === Object;
+}
+
+/**
+ * The inverse of put_buffers, return an objects with the new state where all buffers(ArrayBuffer)
+ * are removed. If a buffer is a member of an object, that object is cloned, and the key removed. If a buffer
+ * is an element of an array, that array is cloned, and the element is set to null.
+ * See put_buffers for the meaning of buffer_paths
+ * Returns an object with the new state (.state) an array with paths to the buffers (.buffer_paths),
+ * and the buffers associated to those paths (.buffers).
+ */
+export function remove_buffers(state){
+  const buffers = [];
+  const buffer_paths = [];
+  // if we need to remove an object from a list, we need to clone that list, otherwise we may modify
+  // the internal state of the widget model
+  // however, we do not want to clone everything, for performance
+  function remove(obj, path) {
+    if (isSerializable(obj)) {
+      // We need to get the JSON form of the object before recursing.
+      // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#toJSON()_behavior
+      obj = obj.toJSON();
+    }
+    if (Array.isArray(obj)) {
+      let is_cloned = false;
+      for (let i = 0; i < obj.length; i++) {
+        const value = obj[i];
+        if (value) {
+          if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+            if (!is_cloned) {
+              obj = obj.slice();
+              is_cloned = true;
+            }
+            buffers.push(ArrayBuffer.isView(value) ? value.buffer : value);
+            buffer_paths.push(path.concat([i]));
+            // easier to just keep the array, but clear the entry, otherwise we have to think
+            // about array length, much easier this way
+            obj[i] = null;
+          } else {
+            const new_value = remove(value, path.concat([i]));
+            // only assigned when the value changes, we may serialize objects that don't support assignment
+            if (new_value !== value) {
+              if (!is_cloned) {
+                obj = obj.slice();
+                is_cloned = true;
+              }
+              obj[i] = new_value;
+            }
+          }
+        }
+      }
+    } else if (isObject(obj)) {
+      for (const key in obj) {
+        let is_cloned = false;
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          const value = obj[key];
+          if (value) {
+            if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+              if (!is_cloned) {
+                obj = { ...obj };
+                is_cloned = true;
+              }
+              buffers.push(ArrayBuffer.isView(value) ? value.buffer : value);
+              buffer_paths.push(path.concat([key]));
+              delete obj[key]; // for objects/dicts we just delete them
+            } else {
+              const new_value = remove(value, path.concat([key]));
+              // only assigned when the value changes, we may serialize objects that don't support assignment
+              if (new_value !== value) {
+                if (!is_cloned) {
+                  obj = { ...obj };
+                  is_cloned = true;
+                }
+                obj[key] = new_value;
+              }
+            }
+          }
+        }
+      }
+    }
+    return obj;
+  }
+  const new_state = remove(state, []);
+  return { state: new_state, buffers: buffers, buffer_paths: buffer_paths };
+}
