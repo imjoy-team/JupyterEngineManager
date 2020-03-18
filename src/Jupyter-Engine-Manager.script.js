@@ -254,17 +254,6 @@ class JupyterServer {
       localStorage.jupyter_servers = JSON.stringify(this.cached_servers)
     }
 
-    // const running_kernels = await Kernel.listRunning(serverSettings)
-    // for(let kernel_info of running_kernels){
-    //   kernel_info.shutdown = async ()=>{
-    //     const kernelModel = await Kernel.findById(kernel_info.id, serverSettings)
-    //     const kernel = await Kernel.connectTo(kernelModel, serverSettings)
-    //     return kernel.shutdown()
-    //   }
-    //   // this._kernels[kernel_info.id] = kernel_info
-    //   // kernels_info.push({name: kernel.name, pid: kernel.id})
-    // }
-
     if(!this.registered_file_managers[server_url]){
       const contents = new ContentsManager({serverSettings:serverSettings});
       const url = server_url;
@@ -323,7 +312,7 @@ class JupyterServer {
             await Kernel.getSpecs(serverSettings)
             fail_count = 20;
           }
-          catch{
+          catch(e){
             fail_count--;
             if(fail_count<=0){
               console.log('Removing file manager.')
@@ -768,6 +757,9 @@ class JupyterConnection {
         this.comm = comm;
         comm.onMsg = msg => {
             var data = msg.content.data
+            const buffer_paths = data.__buffer_paths__ || [];
+            delete data.__buffer_paths__;  
+            util.put_buffers(data, buffer_paths,  msg.buffers || []);
             if (["initialized",
                 "importSuccess",
                 "importFailure",
@@ -790,6 +782,7 @@ class JupyterConnection {
 
   handle_data_message(data){
     if (data.type == "initialized") {
+      this.supportBinaryBuffers = data.supportBinaryBuffers
       this.dedicatedThread = data.dedicatedThread;
       this._initHandler();
     } 
@@ -808,6 +801,7 @@ class JupyterConnection {
           } else if (data.type == "disconnected") {
             this._disconnectHandler(data.details);
           } else {
+              console.log('handling message: ', data)
             this._messageHandler(data);
           }
           break;
@@ -913,10 +907,21 @@ class JupyterConnection {
   send(data) {
     if (this.kernel.status !== 'dead' && this.comm && !this.comm.isDisposed) {
       //console.log('message to plugin', this.secret,  data)
-      this.comm.send({
-        type: "message",
-        data: data,
-      });
+      if(this.supportBinaryBuffers){
+        const split = util.remove_buffers(data);
+        split.state.__buffer_paths__ = split.buffer_paths
+        this.comm.send({
+          type: "message",
+          data: split.state
+        }, {}, {}, split.buffers);
+      }
+      else{
+        this.comm.send({
+          type: "message",
+          data: data
+        });
+      }
+
     } else {
       api.showMessage('The jupyter kernel is disconnected, maybe try to reload the plugin?')
       // this.reconnect().then(()=>{
