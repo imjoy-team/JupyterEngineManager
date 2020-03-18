@@ -372,7 +372,9 @@ export function autoLinkUrls(txt) {
       "$1<a target=\"_blank\" href=\"$2$3\">$2$3</a>");
 }
 
-
+// pub_buffers and remove_buffers are taken from https://github.com/jupyter-widgets/ipywidgets/blob/master/packages/base/src/utils.ts
+// Author: IPython Development Team
+// License: BSD
 export function put_buffers(
   state,
   buffer_paths,
