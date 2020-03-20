@@ -262,10 +262,16 @@ class JupyterServer {
       let _file_list = []
       let fail_count = 20;
       name = name.pathname === '/' ? name.hostname: name.pathname ;
+      if(await pingServer(server_url + 'elfinder'+'?token='+token)){
+        enable_show_file_dialog = true;
+      }
       await api.register({
         type: 'file-manager',
         name: name,
         url: url,
+        showFileDialog: enable_show_file_dialog ? async ()=>{
+          api.showDialog({type: "elFinder", name: "File Manager " + name, data: {serverUrl: server_url, token: token}})
+        } : null,
         async listFiles(root, type, recursive){
           root = normalizePath(root)
           const file_url = `${url}api/contents/${encodeURIComponent(root)}?token=${token}&${ Math.random().toString(36).substr(2, 9)}`;
