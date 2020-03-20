@@ -1,0 +1,68 @@
+<docs lang="markdown">
+
+# Jupyter elFinder
+
+This is a wrapper plugin for working with https://github.com/imjoy-team/jupyter-engine-manager and https://github.com/imjoy-team/jupyter-elfinder
+</docs>
+
+<config lang="json">
+{
+    "name": "Jupyter-elFinder",
+    "type": "window",
+    "tags": [],
+    "ui": "",
+    "version": "0.1.0",
+    "cover": "",
+    "description": "A rich file browser for managing files on remote servers.",
+    "icon": "extension",
+    "inputs": null,
+    "outputs": null,
+    "api_version": "0.1.7",
+    "env": "",
+    "permissions": [],
+    "requirements": [],
+    "dependencies": [],
+    "defaults": {"w": 20, "h": 10, "as_dialog": true},
+    "runnable": false
+}
+</config>
+
+<script lang="javascript">
+
+class ImJoyPlugin {
+    async setup() {
+    
+    }
+
+    async run(ctx) {
+        let serverUrl = ( ctx.data && ctx.data.serverUrl ) || 'http://127.0.0.1:9527';
+        const proxyUrl = ( ctx.data && ctx.data.proxyUrl )|| '/elfinder';
+        if(!ctx.data.token) api.showStatus('WARNING: No token is set for elfinder.');
+        if(serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, serverUrl.length-1)
+        window.ELFINDER_CONFIG = {
+            static_url: serverUrl + proxyUrl + '/static', // https://imjoy-team.github.io/jupyter-elfinder/jupyter_elfinder/static/main.js
+            connector_url: serverUrl + proxyUrl + '/connector',
+            connector_query: ctx.data.token?'token=' + ctx.data.token : null,
+            file_base_url: serverUrl,
+        }
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.setAttribute('data-main', window.ELFINDER_CONFIG['static_url'] + '/main.js');
+        script.src = '//cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js';
+        document.getElementsByTagName('head')[0].appendChild(script);
+    }
+}
+
+api.export(new ImJoyPlugin())
+</script>
+
+<window lang="html">
+    <div id="elfinder">Loading elFinder...</div>
+</window>
+
+<style lang="css">
+.elfinder-quicklook-titlebar-icon {
+    margin-top: 0px!important;
+}
+</style>
+    
