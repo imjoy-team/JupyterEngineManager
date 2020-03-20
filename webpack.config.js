@@ -73,6 +73,13 @@ const config =  (env, argv) => ({
         inject: false
       }
     ),
+    new HtmlWebpackPlugin(
+      {
+        filename: 'Jupyter-elFinder.imjoy.html',
+        template: path.resolve(__dirname, 'src', 'Jupyter-elFinder.imjoy.html'),
+        inject: false
+      }
+    ),
     new HtmlReplaceWebpackPlugin([
       {
         pattern: 'STATIC_SERVER_URL',
