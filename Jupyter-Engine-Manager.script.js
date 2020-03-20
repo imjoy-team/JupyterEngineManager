@@ -262,6 +262,7 @@ class JupyterServer {
       let _file_list = []
       let fail_count = 20;
       name = name.pathname === '/' ? name.hostname: name.pathname ;
+      let enable_show_file_dialog = false;
       if(await pingServer(server_url + 'elfinder'+'?token='+token)){
         enable_show_file_dialog = true;
       }
