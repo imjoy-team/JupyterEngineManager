@@ -245,7 +245,7 @@ class ImJoyPlugin {
                 fm.bind('load', ()=>{
                     const rootNode = fm.getUI().get(0)
                     fm.toggleFullscreen(rootNode)
-                    const button_set = $('<div style="order: 4; margin-left: 10px; margin-right: 10px;" class="ui-dialog-buttonset"></div>')
+                    const button_set = $('<div class="ui-dialog-buttonset"></div>')
                     const ok_button = $('<button class="dialog-btn ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only elfinder-btncnt-2 elfinder-tabstop">OK</button>')
                     ok_button.on('click', ()=>{
                         const selected = fm.selectedFiles()
@@ -282,7 +282,12 @@ api.export(new ImJoyPlugin())
 .elfinder-quicklook-titlebar-icon .ui-icon {
     margin-top: -2px!important;
 }
-
+.ui-dialog-buttonset {
+    order: 4;
+    margin-left: 5px;
+    margin-right: 5px;
+    min-width: 100px;
+}
 .dialog-btn{
     height: 20px;
     font-size: 0.6rem!important;
