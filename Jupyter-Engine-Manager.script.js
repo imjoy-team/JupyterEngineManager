@@ -270,9 +270,17 @@ class JupyterServer {
         type: 'file-manager',
         name: name,
         url: url,
-        // showFileDialog: enable_show_file_dialog ? async ()=>{
-        //   api.showDialog({type: "Jupyter-elFinder", name: "File Manager " + name, data: {serverUrl: server_url, token: token}})
-        // } : null,
+        showFileDialog: enable_show_file_dialog ? (config)=>{
+          return new Promise((resolve, reject)=>{
+            api.showDialog({
+              type: "Jupyter-elFinder", 
+              name: "File Manager " + name, 
+              config: config,
+              data: {serverUrl: server_url, token: token, selected_callback: (selected)=>{
+                resolve(selected)
+            }}}).catch(reject)
+          })
+        } : null,
         async listFiles(root, type, recursive){
           root = normalizePath(root)
           const file_url = `${url}api/contents/${encodeURIComponent(root)}?token=${token}&${ Math.random().toString(36).substr(2, 9)}`;
