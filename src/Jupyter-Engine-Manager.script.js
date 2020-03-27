@@ -394,7 +394,7 @@ class JupyterServer {
 
   installRequirements(kernel, reqs, conda_available) {
     return new Promise(async (resolve, reject) => {
-      const commands = [] //'!pip install --upgrade pip'
+      const commands = [] //'!python -m pip install --upgrade pip'
       if(!Array.isArray(reqs)){
         reqs = [reqs]
       }
@@ -413,7 +413,7 @@ class JupyterServer {
             if(typ === "conda" && libs && conda_available)
                 commands.push("!conda install -y " + libs.join(" "))
             else if(typ === "pip" && libs)
-                commands.push("!pip install " + libs.join(" "))
+                commands.push("!python -m pip install " + libs.join(" "))
             else if(typ == "repo" && libs){
               const temp = libs[0].split("/")
               const name = temp[temp.length-1].replace(".git", "")
@@ -422,12 +422,12 @@ class JupyterServer {
             else if(typ === "cmd" && libs)
                 commands.push(libs.join(" "))
             else if(typ.includes("+") || typ.includes("http"))
-                commands.push(`!pip install ${req}`)
+                commands.push(`!python -m pip install ${req}`)
             else
                 throw `Unsupported requirement type: ${typ}`
         }
         else{
-          commands.push(`!pip install ${req}`)
+          commands.push(`!python -m pip install ${req}`)
         }
       }
 
@@ -614,9 +614,9 @@ const description=`#### Jupyter Engine <sup>alpha</sup>
  
   This allows ImJoy run Python plugin via a [Jupyter](https://jupyter.org/) server. The easiest way to run Jupyter notebook is by using [Anaconda](https://docs.anaconda.com/anaconda/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).  
   1. Install Jupyter server with command <code>pip install -U imjoy</code>
-  1. Start a Jupyter server from your terminal (or Anaconda Prompt) with the command: <br><code>imjoy --jupyter</code>
-  2. Copy and paste the provided URL in "Jupyter Notebook URL" below. **⚠️Important**: the URL needs to contain the connection token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe
-  3. Click "CONNECT TO JUPYTER"
+  2. Start a Jupyter server from your terminal (or Anaconda Prompt) with the command: <br><code>imjoy --jupyter</code>
+  3. Copy and paste the provided URL in "Jupyter Notebook URL" below. **⚠️Important**: the URL needs to contain the connection token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe
+  4. Click "CONNECT TO JUPYTER"
 
 **Note**: Due to security reasons, ImJoy cannot connect to remote notebook server served without <code>https</code>, for Chrome/Firefox, the only exception is the URL for localhost (127.0.0.1 or localhost, Safari can only be used with https URL).
 `
@@ -884,7 +884,7 @@ class JupyterConnection {
       try{
         console.log('installing imjoy...')
         api.showStatus('Setting up ImJoy worker...')
-        await this.execute_code(kernel, '!pip install -U imjoy')
+        await this.execute_code(kernel, '!python -m pip install -U imjoy')
         const client_id = plugin_id;
         console.log('starting jupyter client ...', client_id)
         await this.execute_code(kernel, `from imjoy.workers.jupyter_client import JupyterClient;JupyterClient.recover_client("${client_id}")` )
