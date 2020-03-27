@@ -394,7 +394,7 @@ class JupyterServer {
 
   installRequirements(kernel, reqs, conda_available) {
     return new Promise(async (resolve, reject) => {
-      const commands = [] //'!pip install --upgrade pip'
+      const commands = [] //'!python -m pip install --upgrade pip'
       if(!Array.isArray(reqs)){
         reqs = [reqs]
       }
@@ -413,7 +413,7 @@ class JupyterServer {
             if(typ === "conda" && libs && conda_available)
                 commands.push("!conda install -y " + libs.join(" "))
             else if(typ === "pip" && libs)
-                commands.push("!pip install " + libs.join(" "))
+                commands.push("!python -m pip install " + libs.join(" "))
             else if(typ == "repo" && libs){
               const temp = libs[0].split("/")
               const name = temp[temp.length-1].replace(".git", "")
@@ -422,12 +422,12 @@ class JupyterServer {
             else if(typ === "cmd" && libs)
                 commands.push(libs.join(" "))
             else if(typ.includes("+") || typ.includes("http"))
-                commands.push(`!pip install ${req}`)
+                commands.push(`!python -m pip install ${req}`)
             else
                 throw `Unsupported requirement type: ${typ}`
         }
         else{
-          commands.push(`!pip install ${req}`)
+          commands.push(`!python -m pip install ${req}`)
         }
       }
 
@@ -884,7 +884,7 @@ class JupyterConnection {
       try{
         console.log('installing imjoy...')
         api.showStatus('Setting up ImJoy worker...')
-        await this.execute_code(kernel, '!pip install -U imjoy')
+        await this.execute_code(kernel, '!python -m pip install -U imjoy')
         const client_id = plugin_id;
         console.log('starting jupyter client ...', client_id)
         await this.execute_code(kernel, `from imjoy.workers.jupyter_client import JupyterClient;JupyterClient.recover_client("${client_id}")` )
