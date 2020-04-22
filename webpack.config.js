@@ -75,8 +75,8 @@ const config =  (env, argv) => ({
     ),
     new HtmlWebpackPlugin(
       {
-        filename: 'Jupyter-elFinder.imjoy.html',
-        template: path.resolve(__dirname, 'src', 'Jupyter-elFinder.imjoy.html'),
+        filename: 'ImJoy-elFinder.imjoy.html',
+        template: path.resolve(__dirname, 'src', 'ImJoy-elFinder.imjoy.html'),
         inject: false
       }
     ),
