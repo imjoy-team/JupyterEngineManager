@@ -273,7 +273,7 @@ class JupyterServer {
         showFileDialog: enable_show_file_dialog ? (config)=>{
           return new Promise((resolve, reject)=>{
             api.showDialog({
-              type: "Jupyter-elFinder", 
+              type: "ImJoy-elFinder", 
               name: "File Manager " + name, 
               config: config,
               data: {serverUrl: server_url, token: token, selected_callback: (selected)=>{
