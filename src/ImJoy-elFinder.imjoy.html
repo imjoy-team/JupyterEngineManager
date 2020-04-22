@@ -237,7 +237,7 @@ class ImJoyPlugin {
         }
         if(serverUrl.endsWith('/')) serverUrl = serverUrl.slice(0, serverUrl.length-1)
         loadElFinder({
-            static_url: serverUrl + proxyUrl + '/static', // https://imjoy-team.github.io/ImJoy-elFinder/jupyter_elfinder/static/main.js
+            static_url: serverUrl + proxyUrl + '/static',
             connector_url: serverUrl + proxyUrl + '/connector',
             connector_query: ctx.data.token?'token=' + ctx.data.token : null,
             file_base_url: serverUrl,
