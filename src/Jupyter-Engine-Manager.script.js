@@ -271,27 +271,14 @@ class JupyterServer {
         name: name,
         url: url,
         showFileDialog: enable_show_file_dialog ? (config)=>{
-          return new Promise((resolve, reject)=>{
-            api.showDialog({
-              type: "ImJoy-elFinder", 
-              name: "File Manager " + name, 
-              config: config,
-              data: {serverUrl: server_url, token: token, selected_callback: (selected)=>{
-                const url = new URL(server_url);
-                const baseUrl = url.protocol+'//'+url.hostname+(url.port ? ':'+url.port: '');
-                if(selected){
-                    for(let item of selected){
-                        if(item.url && !item.url.startsWith('http')){
-                          item.url = util.urlJoin(baseUrl, item.url)
-                        }
-                    }
-                    resolve(selected)
-                }
-                else{
-                    reject('Invalid return')
-                }
-            }}}).catch(reject)
+          const w = await api.showDialog({
+            type: 'external',
+            name: "File Manager " + name,
+            src: server_url + 'elfinder'+'?token='+token,
+            config: config
           })
+          const selections = await w.getSelections(config)
+          return selections
         } : null,
         async listFiles(root, type, recursive){
           root = normalizePath(root)
