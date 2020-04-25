@@ -270,7 +270,7 @@ class JupyterServer {
         type: 'file-manager',
         name: name,
         url: url,
-        showFileDialog: enable_show_file_dialog ? (config)=>{
+        showFileDialog: enable_show_file_dialog ? async (config)=>{
           const w = await api.showDialog({
             type: 'external',
             name: "File Manager " + name,
