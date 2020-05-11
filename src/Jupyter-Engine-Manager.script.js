@@ -272,7 +272,6 @@ class JupyterServer {
         url: url,
         showFileDialog: enable_show_file_dialog ? async (config)=>{
           const w = await api.showDialog({
-            type: 'external',
             name: "File Manager " + name,
             src: server_url + 'elfinder'+'?token='+token,
             config: config
@@ -815,7 +814,6 @@ class JupyterConnection {
           } else if (data.type == "disconnected") {
             this._disconnectHandler(data.details);
           } else {
-              console.log('handling message: ', data)
             this._messageHandler(data);
           }
           break;
