@@ -1007,18 +1007,18 @@ async function createNewEngine(engine_config){
         const serverUrl =  engine_config.nbUrl.split('?')[0] 
         
         try{
-          api.showMessage('Connecting to server ' + serverUrl + '...')
+          api.showMessage('Connecting to plugin engine ' + serverUrl + '...')
           await jserver.startServer(engine_config)
-          api.showMessage('🎉Connected to server ' + serverUrl + '.')
+          api.showMessage('🎉Connected to plugin engine ' + serverUrl + '.')
         }
         catch(e){
           if(e.toString().includes('403 Forbidden')){
             console.error(e)
-            api.showMessage('Failed to connect to server ' +serverUrl+ ', maybe the token is wrong?')
+            api.showMessage('Failed to connect to plugin engine ' +serverUrl+ ', maybe the token is wrong?')
           }
           else{
             console.error(e)
-            api.showMessage('Failed to connect to server ' + serverUrl + '.')
+            api.showMessage('Failed to connect to plugin engine ' + serverUrl + '.')
           } 
           throw e
         }
