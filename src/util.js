@@ -382,9 +382,9 @@ export function put_buffers(
 ){
   buffers = buffers.map(b => {
     if (b instanceof DataView) {
-        return b;
+        return b.buffer;
     } else {
-        return new DataView(b instanceof ArrayBuffer ? b : b.buffer);
+        return b instanceof ArrayBuffer ? b : b.buffer;
     }
   });
   for (let i = 0; i < buffer_paths.length; i++) {
