@@ -4,17 +4,6 @@ This package contains the Javascript API for [`JupyterEngineManager`](https://gi
 
 Click [here](https://imjoy.io/#/app?plugin=https://imjoy-team.github.io/jupyter-engine-manager/jupyter-engine-manager.imjoy.html) to run Jupyter Engine Manager in ImJoy.
 
-## Basic Usage
-
-```javascript
-var jserver = new JupyterEngineManager.JupyterServer({
-    spec: 'oeway/imjoy-binder-image/master',
-    baseUrl: 'https://mybinder.org',
-    provider: 'gh',
-})
-jserver.startServer()
-```
-
 ## Development for ImJoy
 
 * Run `npm install`

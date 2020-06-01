@@ -23,6 +23,9 @@ const config =  (env, argv) => ({
   output: {
     filename: 'index.bundle.js',
     path: path.resolve(__dirname, 'dist'),
+    library: 'JupyterEngineManager',
+    libraryTarget: 'umd',
+    umdNamedDefine: true
   },
   devtool: 'cheap-module-eval-source-map',
   devServer: {
