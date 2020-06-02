@@ -1,9 +1,13 @@
 import {
     util
-} from './index'
+} from './index';
+import {put_buffers, remove_buffers, fixOverwrittenChars, fixConsole, MessageEmitter} from './util';
 
-export default class JupyterConnection {
+
+
+export default class JupyterConnection extends MessageEmitter {
     constructor(id, type, config, kernel) {
+        super(config && config.debug);
         this._disconnected = false;
         this.id = id;
         this._failHandler = () => {};
@@ -13,6 +17,7 @@ export default class JupyterConnection {
         this._initHandler = () => {};
 
         this.kernel = kernel;
+        this.config = config;
 
         const config_ = {
             api_version: config.api_version,
@@ -27,18 +32,15 @@ export default class JupyterConnection {
             inputs: config.inputs,
             outputs: config.outputs,
         };
-
         console.log('init_plugin...', config)
-
-
     }
-    async init() {
+
+    async connect() {
         try {
-            const comm = await this.prepare_kernel(this.kernel, this.id)
+            await this.prepare_kernel(this.kernel, this.id)
             console.log('kernel prepared...')
             this.initializing = false;
             this._disconnected = false;
-            await this.setup_comm(comm)
         } catch (e) {
             this._disconnected = true;
             console.error("failed to initialize plugin on the plugin engine", e);
@@ -47,74 +49,33 @@ export default class JupyterConnection {
         }
     }
 
-    setup_comm(comm) {
-        return new Promise((resolve, reject) => {
-            this._initHandler = resolve
-            this.comm = comm;
-            comm.onMsg = msg => {
-                var data = msg.content.data
-                const buffer_paths = data.__buffer_paths__ || [];
-                delete data.__buffer_paths__;
-                util.put_buffers(data, buffer_paths, msg.buffers || []);
-                if (["initialized",
-                        "importSuccess",
-                        "importFailure",
-                        "executeSuccess",
-                        "executeFailure"
-                    ].includes(data.type)) {
-                    this.handle_data_message(data)
-                } else {
-                    this.handle_data_message({
-                        type: 'message',
-                        data: data
-                    })
+
+    setup_comm(kernel, targetOrigin) {
+        targetOrigin = targetOrigin || "*"
+        const comm = kernel.connectToComm("imjoy_rpc");
+        comm.open({});
+        comm.onMsg= msg => {
+            const data = msg.content.data;
+            const buffer_paths = data.__buffer_paths__ || [];
+            delete data.__buffer_paths__;
+            put_buffers(data, buffer_paths, msg.buffers || []);
+            if (data.type === "log" || data.type === "info") {
+                console.log(data.message);
+            } else if (data.type === "error") {
+                console.error(data.message);
+            } else {
+                if (data.peer_id) {
+                    this._peer_id = data.peer_id
                 }
+                this._fire(data.type, data);
             }
-
-            comm.onClose = msg => {
-                console.log('comm closed, reconnecting', id, msg);
-                this.reconnect()
-                reject('Comm is closed');
-            };
-        })
-    }
-
-    handle_data_message(data) {
-        if (data.type == "initialized") {
-            this.supportBinaryBuffers = data.supportBinaryBuffers
-            this.dedicatedThread = data.dedicatedThread;
-            this._initHandler();
-        } else if (data.type == "logging") {
-            this._loggingHandler(data.details);
-        } else if (data.type == "disconnected") {
-            this._disconnectHandler(data.details);
-        } else {
-            switch (data.type) {
-                case "message":
-                    data = data.data
-                    // console.log('message_from_plugin_'+this.secret, data)
-                    if (data.type == "logging") {
-                        this._loggingHandler(data.details);
-                    } else if (data.type == "disconnected") {
-                        this._disconnectHandler(data.details);
-                    } else {
-                        this._messageHandler(data);
-                    }
-                    break;
-                    // case "importSuccess":
-                    //   this._handleImportSuccess(m.url);
-                    //   break;
-                    // case "importFailure":
-                    //   this._handleImportFailure(m.url, m.error);
-                    //   break;
-                case "executeSuccess":
-                    this._executeSCb();
-                    break;
-                case "executeFailure":
-                    this._executeFCb(data.error);
-                    break;
-            }
+        };
+        comm.onClose = msg=> {
+            console.log('comm closed, reconnecting', id, msg);
+            this.reconnect()
+            reject('Comm is closed');
         }
+        return comm;
     }
 
     execute_code(kernel, code) {
@@ -134,9 +95,9 @@ export default class JupyterConnection {
                 if (reply.content.status !== 'ok') {
                     let error_msg = ''
                     for (let data of reply.content.traceback) {
-                        data = util.fixOverwrittenChars(data);
+                        data = fixOverwrittenChars(data);
                         // escape ANSI & HTML specials in plaintext:
-                        data = util.fixConsole(data);
+                        // data = fixConsole(data);
                         // data = util.autoLinkUrls(data);
                         error_msg += data
                     }
@@ -150,28 +111,26 @@ export default class JupyterConnection {
         })
     }
 
-    prepare_kernel(kernel, plugin_id) {
+    prepare_kernel( kernel, plugin_id) {
         return new Promise(async (resolve, reject) => {
             try {
                 console.log('installing imjoy...')
                 api.showStatus('Setting up ImJoy worker...')
-                await this.execute_code(kernel, '!python -m pip install -U imjoy')
+                // await this.execute_code(kernel, '!python -m pip install -U imjoy')
                 const client_id = plugin_id;
-                console.log('starting jupyter client ...', client_id)
-                await this.execute_code(kernel, `from imjoy.workers.jupyter_client import JupyterClient;JupyterClient.recover_client("${client_id}")`)
-                kernel.registerCommTarget(
-                    'imjoy_comm_' + client_id,
-                    function (comm, open_msg) {
-                        //var config = open_msg.content.data
-                        //pio.emit("message_from_plugin_" + id, {'type': 'init_plugin', 'id': config.id, 'config': config});       
-                        resolve(comm)
-                    }
-                )
                 console.log('connecting ImJoy worker...')
-                const command = `from imjoy.workers.python_worker import PluginConnection as __plugin_connection__;__plugin_connection__.add_plugin("${plugin_id}", "${client_id}").start()`;
-                await this.execute_code(kernel, command)
+                api.showStatus('Executing plugin script for ' + this.config.name + '...')
+                for (let i = 0; i < this.config.scripts.length; i++) {
+                    if(this.config.scripts[i].attrs.lang === 'python')
+                        await this.execute_code(kernel, this.config.scripts[i].content);
+                    else
+                        console.error("unsupported script type: " + this.config.scripts[i].attrs.lang)
+                }
+                console.log('starting jupyter client ...', client_id)
+                this.comm = this.setup_comm(kernel)
                 api.showStatus('ImJoy worker is ready.')
                 console.log('ImJoy worker connected...')
+                resolve(this.comm)
             } catch (e) {
                 console.error('Failed to prepare kernel: ', e)
                 reject(e)
@@ -200,23 +159,13 @@ export default class JupyterConnection {
         })
     }
 
-    send(data) {
+    emit(data) {
         if (this.kernel.status !== 'dead' && this.comm && !this.comm.isDisposed) {
             //console.log('message to plugin', this.secret,  data)
-            if (this.supportBinaryBuffers) {
-                const split = util.remove_buffers(data);
-                split.state.__buffer_paths__ = split.buffer_paths
-                this.comm.send({
-                    type: "message",
-                    data: split.state
-                }, {}, {}, split.buffers);
-            } else {
-                this.comm.send({
-                    type: "message",
-                    data: data
-                });
-            }
-
+            data.peer_id = this._peer_id;
+            const split = remove_buffers(data);
+            split.state.__buffer_paths__ = split.buffer_paths;
+            this.comm.send(split.state, {}, {}, split.buffers);
         } else {
             api.showMessage('The jupyter kernel is disconnected, maybe try to reload the plugin?')
             // this.reconnect().then(()=>{
@@ -250,21 +199,5 @@ export default class JupyterConnection {
             jserver.killKernel(this.kernel)
             this.kernel = null;
         };
-    }
-
-    onMessage(handler) {
-        this._messageHandler = handler;
-    }
-
-    onDisconnect(handler) {
-        this._disconnectHandler = handler;
-    }
-
-    onLogging(handler) {
-        this._loggingHandler = handler;
-    }
-
-    onFailed(handler) {
-        this._failHandler = handler;
     }
 }

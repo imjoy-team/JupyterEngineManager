@@ -56,6 +56,65 @@ export const msgToModel = async (msg, manager) => {
 }
 
 
+export class MessageEmitter {
+  constructor(debug) {
+    this._event_handlers = {};
+    this._once_handlers = {};
+    this._debug = debug;
+  }
+  emit() {
+    throw new Error("emit is not implemented");
+  }
+  on(event, handler) {
+    if (!this._event_handlers[event]) {
+      this._event_handlers[event] = [];
+    }
+    this._event_handlers[event].push(handler);
+  }
+  once(event, handler) {
+    handler.___event_run_once = true;
+    this.on(event, handler);
+  }
+  off(event, handler) {
+    if (!event && !handler) {
+      // remove all events handlers
+      this._event_handlers = {};
+    } else if (event && !handler) {
+      // remove all hanlders for the event
+      if (this._event_handlers[event]) this._event_handlers[event] = [];
+    } else {
+      // remove a specific handler
+      if (this._event_handlers[event]) {
+        const idx = this._event_handlers[event].indexOf(handler);
+        if (idx >= 0) {
+          this._event_handlers[event].splice(idx, 1);
+        }
+      }
+    }
+  }
+  _fire(event, data) {
+    if (this._event_handlers[event]) {
+      var i = this._event_handlers[event].length;
+      while (i--) {
+        const handler = this._event_handlers[event][i];
+        try {
+          handler(data);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          if (handler.___event_run_once) {
+            this._event_handlers[event].splice(i, 1);
+          }
+        }
+      }
+    } else {
+      if (this._debug) {
+        console.warn("unhandled event", event, data);
+      }
+    }
+  }
+}
+
 
 var uuid = function () {
   /**
@@ -372,19 +431,24 @@ export function autoLinkUrls(txt) {
       "$1<a target=\"_blank\" href=\"$2$3\">$2$3</a>");
 }
 
-// pub_buffers and remove_buffers are taken from https://github.com/jupyter-widgets/ipywidgets/blob/master/packages/base/src/utils.ts
+function isSerializable(object) {
+  return typeof object === "object" && object && object.toJSON;
+}
+
+function isObject(value) {
+  return value && typeof value === "object" && value.constructor === Object;
+}
+
+// pub_buffers and remove_buffers are taken from
+// https://github.com/jupyter-widgets/ipywidgets/blob/master/packages/base/src/utils.ts
 // Author: IPython Development Team
 // License: BSD
-export function put_buffers(
-  state,
-  buffer_paths,
-  buffers
-){
+export function put_buffers(state, buffer_paths, buffers) {
   buffers = buffers.map(b => {
     if (b instanceof DataView) {
-        return b.buffer;
+      return b.buffer;
     } else {
-        return b instanceof ArrayBuffer ? b : b.buffer;
+      return b instanceof ArrayBuffer ? b : b.buffer;
     }
   });
   for (let i = 0; i < buffer_paths.length; i++) {
@@ -400,26 +464,6 @@ export function put_buffers(
   }
 }
 
- //#Source https://bit.ly/2neWfJ2 
- export function urlJoin(...args){
-  return args
-    .join('/')
-    .replace(/[\/]+/g, '/')
-    .replace(/^(.+):\//, '$1://')
-    .replace(/^file:/, 'file:/')
-    .replace(/\/(\?|&|#[^!])/g, '$1')
-    .replace(/\?/g, '&')
-    .replace('&', '?');
- }
-
-function isSerializable(object){
-    return typeof object === 'object' && object && object.toJSON;
-}
-
-function isObject (value) {
-    return value && typeof value === 'object' && value.constructor === Object;
-}
-
 /**
  * The inverse of put_buffers, return an objects with the new state where all buffers(ArrayBuffer)
  * are removed. If a buffer is a member of an object, that object is cloned, and the key removed. If a buffer
@@ -428,7 +472,7 @@ function isObject (value) {
  * Returns an object with the new state (.state) an array with paths to the buffers (.buffer_paths),
  * and the buffers associated to those paths (.buffers).
  */
-export function remove_buffers(state){
+export function remove_buffers(state) {
   const buffers = [];
   const buffer_paths = [];
   // if we need to remove an object from a list, we need to clone that list, otherwise we may modify
@@ -476,7 +520,9 @@ export function remove_buffers(state){
           if (value) {
             if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
               if (!is_cloned) {
-                obj = { ...obj };
+                obj = {
+                  ...obj
+                };
                 is_cloned = true;
               }
               buffers.push(ArrayBuffer.isView(value) ? value.buffer : value);
@@ -487,7 +533,9 @@ export function remove_buffers(state){
               // only assigned when the value changes, we may serialize objects that don't support assignment
               if (new_value !== value) {
                 if (!is_cloned) {
-                  obj = { ...obj };
+                  obj = {
+                    ...obj
+                  };
                   is_cloned = true;
                 }
                 obj[key] = new_value;
@@ -500,5 +548,9 @@ export function remove_buffers(state){
     return obj;
   }
   const new_state = remove(state, []);
-  return { state: new_state, buffers: buffers, buffer_paths: buffer_paths };
+  return {
+    state: new_state,
+    buffers: buffers,
+    buffer_paths: buffer_paths
+  };
 }
