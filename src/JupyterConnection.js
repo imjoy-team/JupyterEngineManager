@@ -1,10 +1,6 @@
 import { util } from "./index";
 import { executeCode } from "./JupyterServer";
-import {
-  put_buffers,
-  remove_buffers,
-  MessageEmitter
-} from "./util";
+import { put_buffers, remove_buffers, MessageEmitter } from "./util";
 
 export default class JupyterConnection extends MessageEmitter {
   constructor(id, type, config, kernel) {

@@ -52,44 +52,55 @@ export function setupPlugin(kernel, config, imjoy_interface, engine_utils) {
         peer_id: data.peer_id
       });
     });
-    await connection.connect();
+
     const codecs = {};
-    const imjoyRPC = await loadImJoyRPC({version: '0.2.12'});
-    console.log(`Using imjoy-rpc ${imjoyRPC.VERSION} for jupyter kernel.`)
-    const site = new imjoyRPC.RPC(connection, config, codecs);
-    site.on("disconnected", () => {
-      console.log("disconnected.");
-      connection.disconnect();
-      engine_utils.terminatePlugin();
-      reject("disconnected");
-    });
-    site.on("remoteIdle", () => {
-      engine_utils.setPluginStatus({
-        running: false
+    connection.on("initialized", async data => {
+      if (data.error) {
+        console.error("Plugin failed to initialize", data.error);
+        throw new Error(data.error);
+      }
+      const pluginConfig = data.config;
+      const imjoyRPC = await loadImJoyRPC({
+        api_version: pluginConfig.api_version
       });
-    });
-    site.on("remoteBusy", () => {
-      engine_utils.setPluginStatus({
-        running: true
+      console.log(`Using imjoy-rpc ${imjoyRPC.VERSION} for jupyter kernel.`);
+      const site = new imjoyRPC.RPC(connection, config, codecs);
+      site.on("disconnected", () => {
+        console.log("disconnected.");
+        connection.disconnect();
+        engine_utils.terminatePlugin();
+        reject("disconnected");
       });
+      site.on("remoteIdle", () => {
+        engine_utils.setPluginStatus({
+          running: false
+        });
+      });
+      site.on("remoteBusy", () => {
+        engine_utils.setPluginStatus({
+          running: true
+        });
+      });
+      imjoy_interface.ENGINE_URL = kernel.serverSettings.baseUrl;
+      imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
+      site.setInterface(imjoy_interface);
+      site.once("remoteReady", function() {
+        const remote_api = site.getRemote();
+        remote_api.ENGINE_URL = kernel.serverSettings.baseUrl;
+        remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
+        console.log(
+          `plugin ${config.name} (id=${config.id}) initialized.`,
+          remote_api
+        );
+        api.showStatus(`🎉Plugin "${config.name}" is ready.`);
+        resolve(remote_api);
+      });
+      site.once("interfaceSetAsRemote", () => {
+        site.requestRemote();
+      });
+      site.sendInterface();
     });
-    imjoy_interface.ENGINE_URL = kernel.serverSettings.baseUrl;
-    imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
-    site.setInterface(imjoy_interface);
-    site.once("remoteReady", function() {
-      const remote_api = site.getRemote();
-      remote_api.ENGINE_URL = kernel.serverSettings.baseUrl;
-      remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
-      console.log(
-        `plugin ${config.name} (id=${config.id}) initialized.`,
-        remote_api
-      );
-      api.showStatus(`🎉Plugin "${config.name}" is ready.`);
-      resolve(remote_api);
-    });
-    site.once("interfaceSetAsRemote", () => {
-      site.requestRemote();
-    });
-    site.sendInterface();
+
+    await connection.connect();
   });
 }

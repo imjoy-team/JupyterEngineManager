@@ -1,10 +1,7 @@
 import ContentsManager from "./JupyterContents";
 import { Kernel, ServerConnection } from "@jupyterlab/services";
 import BinderHub from "./BinderHub";
-import {
-  fixOverwrittenChars,
-  fixConsole,
-} from "./util";
+import { fixOverwrittenChars, fixConsole } from "./util";
 import {
   util,
   DEFAULT_SPEC,
