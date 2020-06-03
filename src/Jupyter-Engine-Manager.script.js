@@ -1,6 +1,6 @@
-const DEFAULT_BASE_URL = "https://mybinder.org";
-const DEFAULT_PROVIDER = "gh";
-const DEFAULT_SPEC = "oeway/imjoy-binder-image/master";
+const DEFAULT_BASE_URL = JupyterEngineManager.DEFAULT_BASE_URL;
+const DEFAULT_PROVIDER = JupyterEngineManager.DEFAULT_PROVIDER;
+const DEFAULT_SPEC = JupyterEngineManager.DEFAULT_SPEC;
 
 const ServerConnection = JupyterEngineManager.services.ServerConnection;
 const Kernel = JupyterEngineManager.services.Kernel;
@@ -356,10 +356,6 @@ async function createNewEngine(engine_config) {
           kernel.onClose(() => {
             engine_utils.terminatePlugin();
           });
-          // const kernel = await jserver.getOrStartKernel(config.name, serverSettings, config.requirements);
-          // kernel.statusChanged.connect(status => {
-          //   console.log('kernel status changed', kernel._id, status);
-          // });
           try {
             const plugin_api = await JupyterEngineManager.setupPlugin(
               kernel,

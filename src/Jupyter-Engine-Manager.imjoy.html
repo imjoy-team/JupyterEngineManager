@@ -6,18 +6,32 @@
 </docs>
 
 <config lang="json">
-  { "name": "Jupyter-Engine-Manager", "type": "iframe", "tags": [], "ui": "",
-  "version": "PLUGIN_VERSION", "cover": "", "description": "This plugin uses
-  Jupyter notebook servers as engine backend, it can either spwan Jupyter
-  notebook servers via [mybinder.org](https://mybinder.org) or connect to a
-  local Jupyter notebook server.", "icon": "extension", "inputs": null,
-  "outputs": null, "api_version": "0.1.7", "env": "", "permissions": [],
-  "requirements": [
-  "https://cdn.jsdelivr.net/npm/imjoy-rpc@0.2.10/dist/imjoy-rpc.js",
-  "STATIC_SERVER_URL/index.bundle.js?version=PLUGIN_VERSION",
-  "STATIC_SERVER_URL/Jupyter-Engine-Manager.script.js?version=PLUGIN_VERSION" ],
-  "dependencies": [], "runnable": false, "flags": ["engine-factory", "engine",
-  "file-manager" ] }
+{
+  "name":"Jupyter-Engine-Manager",
+  "description":"This plugin uses Jupyter notebook servers as engine backend, it can either spwan Jupyter notebook servers via [mybinder.org](https://mybinder.org) or connect to a local Jupyter notebook server.",
+  "type":"iframe",
+  "tags":[],
+  "ui":"",
+  "version":"PLUGIN_VERSION",
+  "cover":"",
+  "icon":"extension",
+  "inputs":null,
+  "outputs":null,
+  "api_version":"0.1.7",
+  "env":"",
+  "permissions":[],
+  "requirements":[
+      "STATIC_SERVER_URL/index.bundle.js?version=PLUGIN_VERSION",
+      "STATIC_SERVER_URL/Jupyter-Engine-Manager.script.js?version=PLUGIN_VERSION"
+  ],
+  "dependencies":[],
+  "runnable":false,
+  "flags":[
+      "engine-factory",
+      "engine",
+      "file-manager"
+  ]
+}
 </config>
 
 <script lang="javascript"></script>

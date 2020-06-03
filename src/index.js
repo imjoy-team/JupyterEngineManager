@@ -9,6 +9,10 @@ import BinderHub from "./BinderHub";
 import JupyterConnection from "./JupyterConnection";
 import { setupPlugin } from "./Plugin";
 
+const DEFAULT_BASE_URL = "https://mybinder.org";
+const DEFAULT_PROVIDER = "gh";
+const DEFAULT_SPEC = "oeway/imjoy-binder-image/master";
+
 export {
   services,
   BinderHub,
@@ -17,5 +21,8 @@ export {
   debounce,
   ContentsManager,
   JupyterConnection,
-  setupPlugin
+  setupPlugin,
+  DEFAULT_SPEC,
+  DEFAULT_PROVIDER,
+  DEFAULT_BASE_URL
 };

@@ -1,7 +1,12 @@
 import ContentsManager from "./JupyterContents";
 import { Kernel, ServerConnection } from "@jupyterlab/services";
 import BinderHub from "./BinderHub";
-import { util } from "./index";
+import {
+  util,
+  DEFAULT_SPEC,
+  DEFAULT_PROVIDER,
+  DEFAULT_BASE_URL
+} from "./index";
 
 const baseToWsUrl = baseUrl =>
   (baseUrl.startsWith("https:") ? "wss:" : "ws:") +
@@ -26,6 +31,41 @@ function normalizePath(path) {
 async function pingServer(url) {
   const response = await fetch(url);
   return response.status === 200;
+}
+
+export function executeCode(kernel, code) {
+  return new Promise((resolve, reject) => {
+    const execution = kernel.requestExecute({
+      code: code
+    });
+    console.log(kernel, execution);
+    execution.onIOPub = msg => {
+      if (msg.msg_type == "stream") {
+        if (msg.content.name == "stdout") {
+          api.showStatus(msg.content.text);
+        }
+      }
+    };
+    execution.done
+      .then(reply => {
+        if (reply.content.status !== "ok") {
+          let error_msg = "";
+          for (let data of reply.content.traceback) {
+            data = fixOverwrittenChars(data);
+            // escape ANSI & HTML specials in plaintext:
+            data = fixConsole(data);
+            // data = util.autoLinkUrls(data);
+            error_msg += data;
+          }
+          api.showStatus(error_msg);
+          console.error(error_msg);
+          reject(error_msg);
+          return;
+        }
+        resolve(reply.content);
+      })
+      .catch(reject);
+  });
 }
 
 function uploadFile(content_manager, file, path, display, progressbar) {
@@ -137,6 +177,7 @@ export default class JupyterServer {
     // this._kernelHeartbeat = this._kernelHeartbeat.bind(this)
     this.cached_servers = {};
     this.registered_file_managers = {};
+    this.knownKernels = [];
 
     if (localStorage.jupyter_servers) {
       try {
@@ -264,28 +305,11 @@ export default class JupyterServer {
     return { serverSettings, kernelModel };
   }
 
-  async getOrStartKernel(key, serverSettings, requirements) {
-    try {
-      const kernel = await this._getKernel(key, serverSettings);
-      console.log("Connected to cached kernel.");
-      return kernel;
-    } catch (err) {
-      console.log(
-        "No cached kernel, starting kernel a new kernel:",
-        err.toString()
-      );
-      const kernel = await this.startKernel(key, serverSettings);
-      await this.installRequirements(kernel, requirements, true);
-
-      return kernel;
-    }
-  }
-
   async startServer({
     name = null,
-    spec = null,
-    baseUrl = null,
-    provider = null,
+    spec = DEFAULT_SPEC,
+    baseUrl = DEFAULT_BASE_URL,
+    provider = DEFAULT_PROVIDER,
     nbUrl = false
   } = {}) {
     let serverSettings = null;
@@ -472,6 +496,13 @@ export default class JupyterServer {
         name: kernelSpecName,
         serverSettings
       });
+      api.showStatus("Waiting for kernel to start...");
+      await kernel.ready;
+      if (this.knownKernels.indexOf(kernel.name) < 0) {
+        this.knownKernels.push(kernel.name);
+        api.showStatus("Installing imjoy to the kernel...");
+        await executeCode(kernel, "!python -m pip install -U imjoy");
+      }
       this.setupKernelCallbacks(kernel);
       // Store the params in localStorage for later use
       // localStorage.kernelId = kernel.id

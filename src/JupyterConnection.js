@@ -1,4 +1,5 @@
 import { util } from "./index";
+import { executeCode } from "./JupyterServer";
 import {
   put_buffers,
   remove_buffers,
@@ -79,47 +80,9 @@ export default class JupyterConnection extends MessageEmitter {
     return comm;
   }
 
-  execute_code(kernel, code) {
-    return new Promise((resolve, reject) => {
-      const execution = kernel.requestExecute({
-        code: code
-      });
-      console.log(kernel, execution);
-      execution.onIOPub = msg => {
-        if (msg.msg_type == "stream") {
-          if (msg.content.name == "stdout") {
-            api.showStatus(msg.content.text);
-          }
-        }
-      };
-      execution.done
-        .then(reply => {
-          if (reply.content.status !== "ok") {
-            let error_msg = "";
-            for (let data of reply.content.traceback) {
-              data = fixOverwrittenChars(data);
-              // escape ANSI & HTML specials in plaintext:
-              data = fixConsole(data);
-              // data = util.autoLinkUrls(data);
-              error_msg += data;
-            }
-            api.showStatus(error_msg);
-            console.error(error_msg);
-            reject(error_msg);
-            return;
-          }
-          resolve(reply.content);
-        })
-        .catch(reject);
-    });
-  }
-
   prepare_kernel(kernel, plugin_id) {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log("installing imjoy...");
-        api.showStatus("Setting up ImJoy worker...");
-        // await this.execute_code(kernel, '!python -m pip install -U imjoy')
         const client_id = plugin_id;
         console.log("connecting ImJoy worker...");
         api.showStatus(
@@ -127,7 +90,7 @@ export default class JupyterConnection extends MessageEmitter {
         );
         for (let i = 0; i < this.config.scripts.length; i++) {
           if (this.config.scripts[i].attrs.lang === "python")
-            await this.execute_code(kernel, this.config.scripts[i].content);
+            await executeCode(kernel, this.config.scripts[i].content);
           else
             console.error(
               "unsupported script type: " + this.config.scripts[i].attrs.lang
