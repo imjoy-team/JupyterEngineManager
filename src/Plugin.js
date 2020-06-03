@@ -54,7 +54,8 @@ export function setupPlugin(kernel, config, imjoy_interface, engine_utils) {
     });
     await connection.connect();
     const codecs = {};
-    const imjoyRPC = await loadImJoyRPC();
+    const imjoyRPC = await loadImJoyRPC({version: '0.2.12'});
+    console.log(`Using imjoy-rpc ${imjoyRPC.VERSION} for jupyter kernel.`)
     const site = new imjoyRPC.RPC(connection, config, codecs);
     site.on("disconnected", () => {
       console.log("disconnected.");

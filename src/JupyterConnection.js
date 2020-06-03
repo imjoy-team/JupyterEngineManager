@@ -3,8 +3,6 @@ import { executeCode } from "./JupyterServer";
 import {
   put_buffers,
   remove_buffers,
-  fixOverwrittenChars,
-  fixConsole,
   MessageEmitter
 } from "./util";
 
@@ -98,7 +96,7 @@ export default class JupyterConnection extends MessageEmitter {
         }
         console.log("starting jupyter client ...", client_id);
         this.comm = this.setup_comm(kernel);
-        api.showStatus("ImJoy worker is ready.");
+        api.showStatus(`${this.config.name} is ready.`);
         console.log("ImJoy worker connected...");
         resolve(this.comm);
       } catch (e) {
