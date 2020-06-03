@@ -97,7 +97,7 @@ export default class JupyterConnection extends MessageEmitter {
                     for (let data of reply.content.traceback) {
                         data = fixOverwrittenChars(data);
                         // escape ANSI & HTML specials in plaintext:
-                        // data = fixConsole(data);
+                        data = fixConsole(data);
                         // data = util.autoLinkUrls(data);
                         error_msg += data
                     }
