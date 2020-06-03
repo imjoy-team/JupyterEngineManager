@@ -40,13 +40,11 @@
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.39",
     "@babel/plugin-syntax-dynamic-import": "^7.0.0-beta.39",
-    "@babel/polyfill": "^7.0.0-beta.39",
     "@babel/preset-env": "^7.0.0-beta.39",
     "@types/requirejs": "^2.1.28",
     "babel-core": "^6.26.0",
     "babel-loader": "8.0.0-beta.2",
     "babel-runtime": "^6.26.0",
-    "clean-webpack-plugin": "^0.1.19",
     "copy-webpack-plugin": "^5.0.5",
     "css-loader": "^0.28.4",
     "file-loader": "^0.11.2",

@@ -1,5 +1,3 @@
-import "@babel/polyfill";
-
 import JupyterServer from "./JupyterServer";
 import ContentsManager from "./JupyterContents";
 import debounce from "lodash.debounce";
