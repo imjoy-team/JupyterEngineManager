@@ -1,23 +1,22 @@
-const DEFAULT_BASE_URL = 'https://mybinder.org'
-const DEFAULT_PROVIDER = 'gh'
-const DEFAULT_SPEC = 'oeway/imjoy-binder-image/master'
+const DEFAULT_BASE_URL = "https://mybinder.org";
+const DEFAULT_PROVIDER = "gh";
+const DEFAULT_SPEC = "oeway/imjoy-binder-image/master";
 
-const ServerConnection = JupyterEngineManager.services.ServerConnection
-const Kernel = JupyterEngineManager.services.Kernel
+const ServerConnection = JupyterEngineManager.services.ServerConnection;
+const Kernel = JupyterEngineManager.services.Kernel;
 const baseToWsUrl = baseUrl =>
-  (baseUrl.startsWith('https:') ? 'wss:' : 'ws:') +
+  (baseUrl.startsWith("https:") ? "wss:" : "ws:") +
   baseUrl
-  .split(':')
-  .slice(1)
-  .join(':')
-
+    .split(":")
+    .slice(1)
+    .join(":");
 
 async function save_engine_config(engine_config) {
-  let saved_engines = await api.getConfig('engines')
+  let saved_engines = await api.getConfig("engines");
   try {
-    saved_engines = saved_engines ? JSON.parse(saved_engines) : {}
+    saved_engines = saved_engines ? JSON.parse(saved_engines) : {};
   } catch (e) {
-    saved_engines = {}
+    saved_engines = {};
   }
   if (engine_config) {
     for (let k in saved_engines) {
@@ -25,51 +24,49 @@ async function save_engine_config(engine_config) {
         delete saved_engines[k];
       }
     }
-    saved_engines[engine_config.url] = engine_config
+    saved_engines[engine_config.url] = engine_config;
   }
-  await api.setConfig('engines', JSON.stringify(saved_engines))
-  return saved_engines
+  await api.setConfig("engines", JSON.stringify(saved_engines));
+  return saved_engines;
 }
 
-
-const jserver = new JupyterEngineManager.JupyterServer()
+const jserver = new JupyterEngineManager.JupyterServer();
 
 async function setup() {
   await api.register({
-    type: 'engine-factory',
-    name: 'MyBinder-Engine',
+    type: "engine-factory",
+    name: "MyBinder-Engine",
     addEngine: addMyBinderEngine,
     removeEngine: removeEngine
-  })
+  });
 
   await api.register({
-    type: 'engine-factory',
-    name: 'Jupyter-Engine',
+    type: "engine-factory",
+    name: "Jupyter-Engine",
     addEngine: addJupyterEngine,
     removeEngine: removeEngine
-  })
+  });
 
   // create the binder plugin for the first time
-  const temp = await api.getConfig('engines')
+  const temp = await api.getConfig("engines");
   if (!temp) {
     createNewEngine({
-      name: 'MyBinder Engine',
+      name: "MyBinder Engine",
       url: DEFAULT_BASE_URL,
       spec: DEFAULT_SPEC,
       connected: true
-    })
+    });
   }
 
-  let saved_engines = await save_engine_config()
+  let saved_engines = await save_engine_config();
   for (let url in saved_engines) {
-    const config = saved_engines[url]
-    createNewEngine(config)
+    const config = saved_engines[url];
+    createNewEngine(config);
   }
-  api.log('initialized')
+  api.log("initialized");
 }
 
 async function addJupyterEngine() {
-
   // Connect to the notebook webserver.
   const description = `#### Jupyter Engine <sup>alpha</sup>
  
@@ -80,56 +77,58 @@ async function addJupyterEngine() {
   4. Click "CONNECT TO JUPYTER"
 
 **Note**: Due to security reasons, ImJoy cannot connect to remote notebook server served without <code>https</code>, for Chrome/Firefox, the only exception is the URL for localhost (127.0.0.1 or localhost, Safari can only be used with https URL).
-`
+`;
   const dialog = await api.showDialog({
-    type: 'imjoy/schema-io',
-    name: 'Connect to a Jupyter Engine',
+    type: "imjoy/schema-io",
+    name: "Connect to a Jupyter Engine",
     data: {
       id: 0,
-      type: 'form',
+      type: "form",
       schema: {
-        "fields": [{
-            "type": "input",
-            "inputType": "text",
-            "label": "Engine Name",
-            "model": "name",
+        fields: [
+          {
+            type: "input",
+            inputType: "text",
+            label: "Engine Name",
+            model: "name"
           },
           {
-            "type": "input",
-            "inputType": "text",
-            "label": "Jupyter Notebook URL",
-            "hint": "A Jupyter notebook server url with token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe",
-            "model": "nbUrl",
+            type: "input",
+            inputType: "text",
+            label: "Jupyter Notebook URL",
+            hint:
+              "A Jupyter notebook server url with token, e.g.: http://localhost:8888/?token=caac2d7f2e8e0...ad871fe",
+            model: "nbUrl"
           }
         ]
       },
       data: {
-        nbUrl: '',
-        name: 'Jupyter Notebook'
+        nbUrl: "",
+        name: "Jupyter Notebook"
       },
       options: {
         validateAfterLoad: true,
         validateAfterChanged: true
       },
       description: description,
-      buttons: [{
-        label: 'Connect to Jupyter',
-        event_id: 'add',
-        class: 'md-primary md-raised'
-      }]
+      buttons: [
+        {
+          label: "Connect to Jupyter",
+          event_id: "add",
+          class: "md-primary md-raised"
+        }
+      ]
     }
-  })
-  dialog.on('add', async (config) => {
-    dialog.close()
-    config.url = config.nbUrl.split('?')[0]
-    config.connected = true
-    createNewEngine(config)
-  })
+  });
+  dialog.on("add", async config => {
+    dialog.close();
+    config.url = config.nbUrl.split("?")[0];
+    config.connected = true;
+    createNewEngine(config);
+  });
 }
 
-
 async function addMyBinderEngine() {
-
   // Connect to the notebook webserver.
   const description = `### MyBinder Engine <sup>alpha</sup>
   You can run Python plugin in ImJoy via free Jupyter servers provided by [MyBinder.org](https://mybinder.org). 
@@ -141,37 +140,39 @@ async function addMyBinderEngine() {
 
 ⚠️Note 1: This feature is still in development, and new features such as file uploading and terminal will be supported soon.
 ⚠️Note 2: You should **never** process sensitive data with MyBinder Engine ([more information](https://mybinder.readthedocs.io/en/latest/faq.html#how-secure-is-mybinder-org)).
-`
+`;
   const dialog = await api.showDialog({
-    type: 'imjoy/schema-io',
-    name: 'Start Another MyBinder Engine',
+    type: "imjoy/schema-io",
+    name: "Start Another MyBinder Engine",
     data: {
       id: 0,
-      type: 'form',
+      type: "form",
       schema: {
-        "fields": [{
-            "type": "input",
-            "inputType": "text",
-            "label": "Engine Name",
-            "model": "name",
+        fields: [
+          {
+            type: "input",
+            inputType: "text",
+            label: "Engine Name",
+            model: "name"
           },
           {
-            "type": "input",
-            "inputType": "text",
-            "label": "Specification",
-            "hint": "A github repo with configuration files, format: GITHUB_USER/GITHUB_REPO/BRANCH",
-            "model": "spec",
+            type: "input",
+            inputType: "text",
+            label: "Specification",
+            hint:
+              "A github repo with configuration files, format: GITHUB_USER/GITHUB_REPO/BRANCH",
+            model: "spec"
           },
           {
-            "type": "input",
-            "inputType": "text",
-            "label": "Binder URL",
-            "model": "url",
+            type: "input",
+            inputType: "text",
+            label: "Binder URL",
+            model: "url"
           }
         ]
       },
       data: {
-        name: 'New Binder Engine',
+        name: "New Binder Engine",
         url: DEFAULT_BASE_URL,
         spec: DEFAULT_SPEC
       },
@@ -180,231 +181,254 @@ async function addMyBinderEngine() {
         validateAfterChanged: true
       },
       description: description,
-      buttons: [{
-        label: 'Start another Binder Engine',
-        event_id: 'add',
-        class: 'md-primary md-raised'
-      }]
+      buttons: [
+        {
+          label: "Start another Binder Engine",
+          event_id: "add",
+          class: "md-primary md-raised"
+        }
+      ]
     }
-  })
-  dialog.on('add', async (config) => {
-    dialog.close()
-    config.connected = true
-    createNewEngine(config)
-  })
+  });
+  dialog.on("add", async config => {
+    dialog.close();
+    config.connected = true;
+    createNewEngine(config);
+  });
 }
 
 async function pingServer(url) {
-  const response = await fetch(url)
-  return response.status === 200
+  const response = await fetch(url);
+  return response.status === 200;
 }
 
-const registered_engines = {}
+const registered_engines = {};
 
 async function createNewEngine(engine_config) {
-  const engine_kernels = {}
+  const engine_kernels = {};
   let _connected = false;
   let initial_connection = engine_config.connected;
   await api.register({
-    type: 'engine',
-    pluginType: 'native-python',
-    factory: 'Jupyter-Engine',
-    icon: '🚀',
+    type: "engine",
+    pluginType: "native-python",
+    factory: "Jupyter-Engine",
+    icon: "🚀",
     name: engine_config.name,
     url: engine_config.url,
     config: engine_config,
     async connect() {
       // do not connect for the first time if the engine was disconnected
       if (!initial_connection) {
-        initial_connection = true
-        return false
+        initial_connection = true;
+        return false;
       }
       if (engine_config.nbUrl) {
-        const serverUrl = engine_config.nbUrl.split('?')[0]
+        const serverUrl = engine_config.nbUrl.split("?")[0];
 
         try {
-          api.showMessage('Connecting to server ' + serverUrl + '...')
-          await jserver.startServer(engine_config)
-          api.showMessage('🎉Connected to server ' + serverUrl + '.')
+          api.showMessage("Connecting to server " + serverUrl + "...");
+          await jserver.startServer(engine_config);
+          api.showMessage("🎉Connected to server " + serverUrl + ".");
         } catch (e) {
-          if (e.toString().includes('403 Forbidden')) {
-            console.error(e)
-            api.showMessage('Failed to connect to server ' + serverUrl + ', maybe the token is wrong?')
+          if (e.toString().includes("403 Forbidden")) {
+            console.error(e);
+            api.showMessage(
+              "Failed to connect to server " +
+                serverUrl +
+                ", maybe the token is wrong?"
+            );
           } else {
-            console.error(e)
-            api.showMessage('Failed to connect to server ' + serverUrl + '.')
+            console.error(e);
+            api.showMessage("Failed to connect to server " + serverUrl + ".");
           }
-          throw e
+          throw e;
         }
       } else {
         try {
-          api.showMessage('Connecting to MyBinder...')
-          await pingServer(engine_config.url)
-          api.showMessage('🎉Connected to MyBinder.')
+          api.showMessage("Connecting to MyBinder...");
+          await pingServer(engine_config.url);
+          api.showMessage("🎉Connected to MyBinder.");
         } catch (e) {
-          console.error(e)
-          api.showMessage('Failed to start server on MyBinder.org')
-          throw e
+          console.error(e);
+          api.showMessage("Failed to start server on MyBinder.org");
+          throw e;
         }
       }
       _connected = true;
-      engine_config.connected = true
-      await save_engine_config(engine_config)
-      return true
+      engine_config.connected = true;
+      await save_engine_config(engine_config);
+      return true;
     },
     async disconnect() {
       if (registered_engines[engine_config.name]) {
-        for (let kernel of Object.values(registered_engines[engine_config.name].kernels)) {
+        for (let kernel of Object.values(
+          registered_engines[engine_config.name].kernels
+        )) {
           try {
             // TODO: handle allow-detach flag
-            jserver.killKernel(kernel)
+            jserver.killKernel(kernel);
           } catch (e) {
-            console.error(e)
+            console.error(e);
           }
         }
-        registered_engines[engine_config.name].kernels = []
+        registered_engines[engine_config.name].kernels = [];
       }
 
       _connected = false;
-      engine_config.connected = false
-      await save_engine_config(engine_config)
+      engine_config.connected = false;
+      await save_engine_config(engine_config);
     },
     listPlugins: () => {},
     getPlugin: () => {},
     startPlugin: (config, imjoy_interface, engine_utils) => {
       return new Promise(async (resolve, reject) => {
         if (!_connected) {
-          reject('Engine is disconnected.')
-          return
+          reject("Engine is disconnected.");
+          return;
         }
         try {
-          let serverSettings, kernelSpecName = null,
+          let serverSettings,
+            kernelSpecName = null,
             skipRequirements = false;
           if (engine_config.nbUrl) {
-            serverSettings = await jserver.startServer(engine_config)
+            serverSettings = await jserver.startServer(engine_config);
           } else {
             if (!localStorage.binder_confirmation_shown) {
               const ret = await api.confirm({
                 title: "📌Notice: About to run plugin on mybinder.org",
                 content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue? <br> (You won't see this message again if you select Yes)`,
-                confirm_text: 'Yes'
-              })
+                confirm_text: "Yes"
+              });
               if (!ret) {
-                reject("User canceled plugin execution.")
-                return
+                reject("User canceled plugin execution.");
+                return;
               }
-              localStorage.binder_confirmation_shown = true
+              localStorage.binder_confirmation_shown = true;
             }
 
-            if (imjoy_interface.TAG && imjoy_interface.TAG.includes('GPU')) {
+            if (imjoy_interface.TAG && imjoy_interface.TAG.includes("GPU")) {
               const ret = await api.confirm({
                 title: "📌Running plugin that requires GPU?",
                 content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`,
-                confirm_text: 'Yes'
-              })
+                confirm_text: "Yes"
+              });
               if (!ret) {
-                reject("User canceled plugin execution.")
-                return
+                reject("User canceled plugin execution.");
+                return;
               }
             }
             let binderSpec = DEFAULT_SPEC;
             if (Array.isArray(config.env)) {
               for (let e of config.env) {
-                if (e.type === 'binder' && e.spec) {
-                  binderSpec = e.spec
-                  kernelSpecName = e.kernel
-                  skipRequirements = e.skip_requirements
+                if (e.type === "binder" && e.spec) {
+                  binderSpec = e.spec;
+                  kernelSpecName = e.kernel;
+                  skipRequirements = e.skip_requirements;
                 }
               }
             }
-            console.log('Starting server with binder spec', binderSpec)
+            console.log("Starting server with binder spec", binderSpec);
             engine_config.spec = binderSpec;
             serverSettings = await jserver.startServer(engine_config);
           }
 
-          const kernel = await jserver.startKernel(config.name, serverSettings, kernelSpecName)
+          const kernel = await jserver.startKernel(
+            config.name,
+            serverSettings,
+            kernelSpecName
+          );
 
-          api.showMessage('🎉 Jupyter Kernel started (' + serverSettings.baseUrl + ')')
+          api.showMessage(
+            "🎉 Jupyter Kernel started (" + serverSettings.baseUrl + ")"
+          );
           if (skipRequirements) {
-            console.log('skipping requirements according to binder spec')
+            console.log("skipping requirements according to binder spec");
           } else {
-            await jserver.installRequirements(kernel, config.requirements, true);
+            await jserver.installRequirements(
+              kernel,
+              config.requirements,
+              true
+            );
           }
           kernel.pluginId = config.id;
           kernel.pluginName = config.name;
-          engine_kernels[kernel.id] = kernel
+          engine_kernels[kernel.id] = kernel;
           kernel.onClose(() => {
-            engine_utils.terminatePlugin()
-          })
+            engine_utils.terminatePlugin();
+          });
           // const kernel = await jserver.getOrStartKernel(config.name, serverSettings, config.requirements);
           // kernel.statusChanged.connect(status => {
           //   console.log('kernel status changed', kernel._id, status);
           // });
-          try{
-            const plugin_api = await JupyterEngineManager.setupPlugin(kernel, config, imjoy_interface, engine_utils)
-            resolve(plugin_api)
-          }
-          catch(e){
-            reject(e)
+          try {
+            const plugin_api = await JupyterEngineManager.setupPlugin(
+              kernel,
+              config,
+              imjoy_interface,
+              engine_utils
+            );
+            resolve(plugin_api);
+          } catch (e) {
+            reject(e);
           }
         } catch (e) {
-          console.error(e)
-          api.showMessage('Failed to start plugin ' + config.name + ', ' + e.toString())
-          reject(e)
+          console.error(e);
+          api.showMessage(
+            "Failed to start plugin " + config.name + ", " + e.toString()
+          );
+          reject(e);
         }
       });
     },
     getEngineConfig() {
-      return {}
+      return {};
     },
     async getEngineStatus() {
-      const kernels_info = []
+      const kernels_info = [];
       // for(let k in jserver._kernels){
       //   const kernel = jserver._kernels[k]
       //   kernels_info.push({name: kernel.pluginName || kernel.name, pid: kernel.id})
       // }
       for (let k in jserver.cached_servers) {
-        const {
-          url,
-          token
-        } = jserver.cached_servers[k]
+        const { url, token } = jserver.cached_servers[k];
         // Connect to the notebook webserver.
         const serverSettings = ServerConnection.makeSettings({
           baseUrl: url,
           wsUrl: baseToWsUrl(url),
-          token: token,
-        })
+          token: token
+        });
         try {
-          const kernels = await Kernel.listRunning(serverSettings)
+          const kernels = await Kernel.listRunning(serverSettings);
           for (let kernel of kernels) {
-              kernels_info.push({
-                name: engine_kernels[kernel.id]?engine_kernels[kernel.id].pluginName:kernel.id,
-                pid: kernel.id,
-                baseUrl: url,
-                wsUrl: baseToWsUrl(url),
-                token: token
-              })
+            kernels_info.push({
+              name: engine_kernels[kernel.id]
+                ? engine_kernels[kernel.id].pluginName
+                : kernel.id,
+              pid: kernel.id,
+              baseUrl: url,
+              wsUrl: baseToWsUrl(url),
+              token: token
+            });
           }
         } catch (e) {
-          console.error('removing dead server:', e)
+          console.error("removing dead server:", e);
         }
       }
       return {
         plugin_processes: kernels_info
-      }
+      };
       // return engine.updateEngineStatus()
     },
     killPlugin(config) {
-      console.log('killing plugin', config, jserver._kernels)
+      console.log("killing plugin", config, jserver._kernels);
       for (let k in jserver._kernels) {
-        const kernel = jserver._kernels[k]
+        const kernel = jserver._kernels[k];
         if (kernel.pluginId === config.id) {
           try {
-            jserver.killKernel(kernel)
+            jserver.killKernel(kernel);
           } catch (e) {
-            console.error(e)
+            console.error(e);
           }
-
         }
       }
     },
@@ -412,17 +436,17 @@ async function createNewEngine(engine_config) {
       // kernel.close()
       try {
         if (jserver._kernels[p.pid]) {
-          await jserver.killKernel(jserver._kernels[p.pid])
+          await jserver.killKernel(jserver._kernels[p.pid]);
         } else {
-          const serverSettings = ServerConnection.makeSettings(p)
-          const kernelModel = await Kernel.findById(p.pid, serverSettings)
-          const kernel = await Kernel.connectTo(kernelModel, serverSettings)
-          await kernel.shutdown()
+          const serverSettings = ServerConnection.makeSettings(p);
+          const kernelModel = await Kernel.findById(p.pid, serverSettings);
+          const kernel = await Kernel.connectTo(kernelModel, serverSettings);
+          await kernel.shutdown();
         }
       } catch (e) {
-        console.error(e)
+        console.error(e);
       } finally {
-        delete jserver._kernels[p.pid]
+        delete jserver._kernels[p.pid];
       }
       // return engine.killPluginProcess(p)
     },
@@ -431,33 +455,30 @@ async function createNewEngine(engine_config) {
     },
     async startTerminal() {
       if (Object.keys(jserver.cached_servers).length <= 0) {
-        api.alert('No jupyter engine is currently running.')
-        return
+        api.alert("No jupyter engine is currently running.");
+        return;
       }
       // data-base-url="/user/oeway-imjoy-binder-image-8o8ztfkj/" data-ws-url="" data-ws-path="terminals/websocket/1"
       // ws_url = ws_url + base_url + ws_path;
 
-      const buttons = []
-      let i = 0
+      const buttons = [];
+      let i = 0;
       for (let k in jserver.cached_servers) {
-        const {
-          url,
-          token
-        } = jserver.cached_servers[k]
+        const { url, token } = jserver.cached_servers[k];
         // Connect to the notebook webserver.
         const serverSettings = ServerConnection.makeSettings({
           baseUrl: url,
           wsUrl: baseToWsUrl(url),
-          token: token,
-        })
-        const ws_url = serverSettings.wsUrl + 'terminals/websocket/1' //'wss://hub-binder.mybinder.ovh/user/oeway-imjoy-binder-image-8o8ztfkj/terminals/websocket/1'
+          token: token
+        });
+        const ws_url = serverSettings.wsUrl + "terminals/websocket/1"; //'wss://hub-binder.mybinder.ovh/user/oeway-imjoy-binder-image-8o8ztfkj/terminals/websocket/1'
         let name = new URL(url);
-        name = name.pathname === '/' ? name.hostname : name.pathname;
+        name = name.pathname === "/" ? name.hostname : name.pathname;
         buttons.push({
           label: name,
           event_id: k,
           ws_url: ws_url
-        })
+        });
         i++;
       }
       const w = {
@@ -475,44 +496,49 @@ async function createNewEngine(engine_config) {
 
       let terminal_started = false;
 
-      const make_terminal = (ws_url) => {
-
+      const make_terminal = ws_url => {
         if (terminal_started) {
-          api.alert('Please open another terminal window if you want to switch server.')
-          return
+          api.alert(
+            "Please open another terminal window if you want to switch server."
+          );
+          return;
         }
         // clear the buttons;
-        terminal_window.emit('show_buttons', [])
+        terminal_window.emit("show_buttons", []);
         terminal_started = true;
         var ws = new WebSocket(ws_url);
         // Terminal.applyAddon(fit);
         // var term = new Terminal();
-        ws.onopen = async (event) => {
+        ws.onopen = async event => {
+          terminal_window.emit("write", "Connected to terminal\r\n");
+          const write = data => {
+            terminal_window.emit("write", data);
+          };
+          const disconnect = data => {
+            terminal_window.emit("write", "\r\nDisconnected!\r\n");
+          };
 
-          terminal_window.emit('write', "Connected to terminal\r\n")
-          const write = (data) => {
-            terminal_window.emit('write', data)
-          }
-          const disconnect = (data) => {
-            terminal_window.emit('write', "\r\nDisconnected!\r\n")
-          }
-
-          terminal_window.on('fit', (config) => {
+          terminal_window.on("fit", config => {
             // send the terminal size to the server.
-            ws.send(JSON.stringify(["set_size", config["rows"], config["cols"],
-              window.innerHeight, window.innerWidth
-            ]));
-
-          })
-          terminal_window.on('key', (key) => {
-            ws.send(JSON.stringify(['stdin', key]));
+            ws.send(
+              JSON.stringify([
+                "set_size",
+                config["rows"],
+                config["cols"],
+                window.innerHeight,
+                window.innerWidth
+              ])
+            );
+          });
+          terminal_window.on("key", key => {
+            ws.send(JSON.stringify(["stdin", key]));
           });
 
           terminal_window.on("paste", data => {
-            ws.send(JSON.stringify(['stdin', data]));
-          })
+            ws.send(JSON.stringify(["stdin", data]));
+          });
 
-          ws.onmessage = function (event) {
+          ws.onmessage = function(event) {
             var json_msg = JSON.parse(event.data);
             switch (json_msg[0]) {
               case "stdout":
@@ -524,50 +550,54 @@ async function createNewEngine(engine_config) {
             }
           };
         };
-      }
+      };
       if (buttons.length == 1) {
-        make_terminal(buttons[0].ws_url)
+        make_terminal(buttons[0].ws_url);
       } else {
-        terminal_window.on('button_clicked', (event) => {
-          make_terminal(event.ws_url)
-        })
+        terminal_window.on("button_clicked", event => {
+          make_terminal(event.ws_url);
+        });
       }
     },
     about() {
-      api.alert('An ImJoy Engine for Jupyter Servers.')
-      console.log(jserver)
+      api.alert("An ImJoy Engine for Jupyter Servers.");
+      console.log(jserver);
     }
-  })
+  });
 
   registered_engines[engine_config.name] = {
     kernels: engine_kernels,
     disconnect: () => {
-      for (let kernel of Object.values(registered_engines[engine_config.name].kernels)) {
+      for (let kernel of Object.values(
+        registered_engines[engine_config.name].kernels
+      )) {
         try {
-          jserver.killKernel(kernel)
+          jserver.killKernel(kernel);
         } catch (e) {
-          console.error(e)
+          console.error(e);
         }
       }
       _connected = false;
     }
-  }
-
+  };
 }
 
 async function removeEngine(engine_config) {
-  if (await api.confirm(`Do you really want to remove the engine ${engine_config.name}?`)) {
+  if (
+    await api.confirm(
+      `Do you really want to remove the engine ${engine_config.name}?`
+    )
+  ) {
     if (registered_engines[engine_config.name]) {
-      registered_engines[engine_config.name].disconnect()
+      registered_engines[engine_config.name].disconnect();
     }
-    let saved_engines = await save_engine_config()
-    delete saved_engines[engine_config.url]
-    await api.setConfig('engines', JSON.stringify(saved_engines))
-    return true
+    let saved_engines = await save_engine_config();
+    delete saved_engines[engine_config.url];
+    await api.setConfig("engines", JSON.stringify(saved_engines));
+    return true;
   }
-
 }
 
 api.export({
-  'setup': setup
+  setup: setup
 });

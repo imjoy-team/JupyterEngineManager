@@ -1,316 +1,303 @@
 <docs>
-# Jupyter notebook plugin
-
+  # Jupyter notebook plugin
 </docs>
 
 <config lang="json">
-{
-    "name": "Jupyter-Notebook",
-    "type": "evil",
-    "tags": [],
-    "ui": "",
-    "version": "0.1.0",
-    "cover": "",
-    "description": "Running ImJoy inside jupyter notebooks",
-    "icon": "extension",
-    "inputs": null,
-    "outputs": null,
-    "api_version": "0.1.7",
-    "env": "",
-    "flags": ["engine"],
-    "permissions": [],
-    "requirements": ["https://lib.imjoy.io/static/jailed/_JailedSite.js", "https://imjoy-team.github.io/jupyter-engine-manager/index.bundle.js"],
-    "dependencies": []
-}
+  { "name": "Jupyter-Notebook", "type": "evil", "tags": [], "ui": "", "version":
+  "0.1.0", "cover": "", "description": "Running ImJoy inside jupyter notebooks",
+  "icon": "extension", "inputs": null, "outputs": null, "api_version": "0.1.7",
+  "env": "", "flags": ["engine"], "permissions": [], "requirements":
+  ["https://lib.imjoy.io/static/jailed/_JailedSite.js",
+  "https://imjoy-team.github.io/jupyter-engine-manager/index.bundle.js"],
+  "dependencies": [] }
 </config>
 
 <script lang="javascript">
-function assert(condition, message) {
-    if (!condition) {
-    message = message || "Assertion failed";
-    if (typeof Error !== "undefined") {
-        throw new Error(message);
-    }
-    throw message; // Fallback
-    }
-}
+  function assert(condition, message) {
+      if (!condition) {
+      message = message || "Assertion failed";
+      if (typeof Error !== "undefined") {
+          throw new Error(message);
+      }
+      throw message; // Fallback
+      }
+  }
 
-class PostMessageIO {
-    constructor() {
-    this._callbacks = {};
-    assert(
-        window.parent,
-        "PostMessageIO can only be enabled when used in an iframe."
-    );
-    this._handler = e => {
-        if (e.source === window.parent) {
-        if (e.data.channel && this._callbacks[e.data.channel]) {
-            for (let cb of this._callbacks[e.data.channel]) cb(e.data);
-        }
-        }
-    };
+  class PostMessageIO {
+      constructor() {
+      this._callbacks = {};
+      assert(
+          window.parent,
+          "PostMessageIO can only be enabled when used in an iframe."
+      );
+      this._handler = e => {
+          if (e.source === window.parent) {
+          if (e.data.channel && this._callbacks[e.data.channel]) {
+              for (let cb of this._callbacks[e.data.channel]) cb(e.data);
+          }
+          }
+      };
 
-    window.addEventListener("message", this._handler, false);
-    }
+      window.addEventListener("message", this._handler, false);
+      }
 
-    destroy() {
-    window.removeEventListener("message", this._handler);
-    }
+      destroy() {
+      window.removeEventListener("message", this._handler);
+      }
 
-    connect() {
-    window.parent.postMessage({ type: "pio_connect" }, "*");
-    }
+      connect() {
+      window.parent.postMessage({ type: "pio_connect" }, "*");
+      }
 
-    disconnect() {
-    window.parent.postMessage({ type: "pio_disconnect" }, "*");
-    }
+      disconnect() {
+      window.parent.postMessage({ type: "pio_disconnect" }, "*");
+      }
 
-    emit(channel, data) {
-    data.channel = channel;
-    window.parent.postMessage(data, "*");
-    }
+      emit(channel, data) {
+      data.channel = channel;
+      window.parent.postMessage(data, "*");
+      }
 
-    on(channel, callback) {
-    if (this._callbacks[channel]) {
-        this._callbacks[channel].push(callback);
-    } else {
-        this._callbacks[channel] = [callback];
-    }
-    }
+      on(channel, callback) {
+      if (this._callbacks[channel]) {
+          this._callbacks[channel].push(callback);
+      } else {
+          this._callbacks[channel] = [callback];
+      }
+      }
 
-    off(channel, callback) {
-    if (this._callbacks[channel]) {
-        for (var i = 0; i < this._callbacks[channel].length; i++) {
-        if (this._callbacks[channel][i] === callback) {
-            this._callbacks[channel].splice(i, 1);
-        }
-        }
-    }
-    }
-}
-
-
-class PostMessageConnection {
-    constructor(id, type, config, pio) {
-    assert(
-        window.top !== window.self,
-        "PostMessage Connection can only be used inside an iframe."
-    );
-    this._disconnected = false;
-    this.id = id;
-    this.pio = pio;
-
-    this._initHandler = () => {};
-    this._failHandler = () => {};
-    this._disconnectHandler = () => {};
-    this._loggingHandler = () => {};
-
-    const config_ = {
-        api_version: config.api_version,
-        flags: config.flags,
-        tag: config.tag,
-        workspace: config.workspace,
-        env: config.env,
-        requirements: config.requirements,
-        cmd: config.cmd,
-        name: config.name,
-        type: config.type,
-        inputs: config.inputs,
-        outputs: config.outputs,
-    };
-
-    // create a plugin here
-    this.pio.emit("init_plugin", { id: this.id, type: type, config: config_ });
-
-    this._disconnected = false;
-    config.work_dir = "";
-    config.resumed = false;
-
-    this.pio.on("message_from_plugin_" + this.id, data => {
-        if (data.type == "initialized") {
-        this.dedicatedThread = data.dedicatedThread;
-        this._initHandler();
-        } 
-        else if (data.type == "logging") {
-        this._loggingHandler(data.details);
-        } else if (data.type == "disconnected") {
-        this._disconnectHandler(data.details);
-        }
-        else{
-            switch (data.type) {
-            case "message":
-                data = data.data
-                // console.log('message_from_plugin_'+this.secret, data)
-                if (data.type == "initialized") {
-                this.dedicatedThread = data.dedicatedThread;
-                this._initHandler();
-                } else if (data.type == "logging") {
-                this._loggingHandler(data.details);
-                } else if (data.type == "disconnected") {
-                this._disconnectHandler(data.details);
-                } else {
-                this._messageHandler(data);
-                }
-                break;
-            // case "importSuccess":
-            //   this._handleImportSuccess(m.url);
-            //   break;
-            // case "importFailure":
-            //   this._handleImportFailure(m.url, m.error);
-            //   break;
-            case "executeSuccess":
-                this._executeSCb();
-                break;
-            case "executeFailure":
-                this._executeFCb(data.error);
-                break;
-            }
-        }
-        
-    })
-    }
-
-    send(data) {
-    if (this.pio) {
-        this.pio.emit("message_to_plugin_" + this.id, {
-        type: "message",
-        data: {
-            type: "message",
-            data: data,
-        },
-        });
-    } else {
-        throw "postMessageIO disconnected.";
-    }
-    }
-
-    execute(code) {
-    return new Promise((resolve, reject) => {
-        this._executeSCb = resolve;
-        this._executeFCb = reject;
-        this.pio.emit("message_to_plugin_" + this.id, {
-        type: "message",
-        data: {
-            type: "execute",
-            code: code 
-        },
-        });
-    });
-    }
-
-    onMessage(handler) {
-    this._messageHandler = handler;
-    }
-
-    onDisconnect(handler) {
-    this._disconnectHandler = handler;
-    }
-
-    onLogging(handler) {
-    this._loggingHandler = handler;
-    }
-
-    onInit(handler) {
-    this._initHandler = handler;
-    }
-
-    onFailed(handler) {
-    this._failHandler = handler;
-    }
-
-    /**
-     * Disconnects the plugin (= kills the frame)
-     */
-    disconnect() {
-    if (!this._disconnected) {
-        this._disconnected = true;
-    }
-    if(this._disconnectHandler) this._disconnectHandler();
-    }
-}
-
-class ImJoyPlugin {
-    async setup() {
-    await api.register({
-        type: 'engine',
-        pluginType: 'jupyter-notebook',
-        icon: '🚀',
-        name: 'jupyter-notebook',
-        url: 'jupyter-notebook',
-        config: {},
-        connect(){
-        return true;
-        },
-        disconnect(){
-        throw "not implemented"
-        },
-        listPlugins: ()=>{
-        },
-        getPlugin: ()=>{
-        },
-        startPlugin: (config, api_interface)=>{
-        return new Promise((resolve, reject) => {
-            const pio = new PostMessageIO()
-            const connection = new PostMessageConnection(config.id, 'jupyter-notebook', config, pio);
-            connection.onInit(()=>{
-            const site = new JailedSite(connection, "__plugin__", "javascript");
-            site.onInterfaceSetAsRemote(async ()=>{
-                for (let i = 0; i < config.scripts.length; i++) {
-                await connection.execute({
-                    type: "script",
-                    content: config.scripts[i].content,
-                    lang: config.scripts[i].attrs.lang,
-                    attrs: config.scripts[i].attrs,
-                    src: config.scripts[i].attrs.src,
-                });
-                }
-                site.onRemoteUpdate(() => {
-                const remote_api = site.getRemote();
-                console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
-                resolve(remote_api)
-                site.onDisconnect((details) => {
-                    config.terminate()
-                })
-                });
-                site.requestRemote();
-            });
-            site.onDisconnect((details) => {
-                console.log('disconnected.', details)
-                reject('disconnected')
-            })
-            site.setInterface(api_interface);
-            })
-
-        });
-        },
-        getEngineInfo() {
-        return {}
-        },
-        getEngineStatus() {
-        throw "not implemented"
-        },
-        killPlugin(){
-
-        },
-        killPluginProcess(p) {
-        throw "not implemented"
-        },
-        heartbeat(){
-        return true
-        },
-        async startTerminal(){
-        
-        }
-    })
-    api.showMessage(`Plugin engine jupyter-notebook connected.`)
-    }
+      off(channel, callback) {
+      if (this._callbacks[channel]) {
+          for (var i = 0; i < this._callbacks[channel].length; i++) {
+          if (this._callbacks[channel][i] === callback) {
+              this._callbacks[channel].splice(i, 1);
+          }
+          }
+      }
+      }
+  }
 
 
-    async run(ctx) {
-    api.alert('hello world.')
-    }
-}
+  class PostMessageConnection {
+      constructor(id, type, config, pio) {
+      assert(
+          window.top !== window.self,
+          "PostMessage Connection can only be used inside an iframe."
+      );
+      this._disconnected = false;
+      this.id = id;
+      this.pio = pio;
 
-api.export(new ImJoyPlugin())
+      this._initHandler = () => {};
+      this._failHandler = () => {};
+      this._disconnectHandler = () => {};
+      this._loggingHandler = () => {};
+
+      const config_ = {
+          api_version: config.api_version,
+          flags: config.flags,
+          tag: config.tag,
+          workspace: config.workspace,
+          env: config.env,
+          requirements: config.requirements,
+          cmd: config.cmd,
+          name: config.name,
+          type: config.type,
+          inputs: config.inputs,
+          outputs: config.outputs,
+      };
+
+      // create a plugin here
+      this.pio.emit("init_plugin", { id: this.id, type: type, config: config_ });
+
+      this._disconnected = false;
+      config.work_dir = "";
+      config.resumed = false;
+
+      this.pio.on("message_from_plugin_" + this.id, data => {
+          if (data.type == "initialized") {
+          this.dedicatedThread = data.dedicatedThread;
+          this._initHandler();
+          }
+          else if (data.type == "logging") {
+          this._loggingHandler(data.details);
+          } else if (data.type == "disconnected") {
+          this._disconnectHandler(data.details);
+          }
+          else{
+              switch (data.type) {
+              case "message":
+                  data = data.data
+                  // console.log('message_from_plugin_'+this.secret, data)
+                  if (data.type == "initialized") {
+                  this.dedicatedThread = data.dedicatedThread;
+                  this._initHandler();
+                  } else if (data.type == "logging") {
+                  this._loggingHandler(data.details);
+                  } else if (data.type == "disconnected") {
+                  this._disconnectHandler(data.details);
+                  } else {
+                  this._messageHandler(data);
+                  }
+                  break;
+              // case "importSuccess":
+              //   this._handleImportSuccess(m.url);
+              //   break;
+              // case "importFailure":
+              //   this._handleImportFailure(m.url, m.error);
+              //   break;
+              case "executeSuccess":
+                  this._executeSCb();
+                  break;
+              case "executeFailure":
+                  this._executeFCb(data.error);
+                  break;
+              }
+          }
+
+      })
+      }
+
+      send(data) {
+      if (this.pio) {
+          this.pio.emit("message_to_plugin_" + this.id, {
+          type: "message",
+          data: {
+              type: "message",
+              data: data,
+          },
+          });
+      } else {
+          throw "postMessageIO disconnected.";
+      }
+      }
+
+      execute(code) {
+      return new Promise((resolve, reject) => {
+          this._executeSCb = resolve;
+          this._executeFCb = reject;
+          this.pio.emit("message_to_plugin_" + this.id, {
+          type: "message",
+          data: {
+              type: "execute",
+              code: code
+          },
+          });
+      });
+      }
+
+      onMessage(handler) {
+      this._messageHandler = handler;
+      }
+
+      onDisconnect(handler) {
+      this._disconnectHandler = handler;
+      }
+
+      onLogging(handler) {
+      this._loggingHandler = handler;
+      }
+
+      onInit(handler) {
+      this._initHandler = handler;
+      }
+
+      onFailed(handler) {
+      this._failHandler = handler;
+      }
+
+      /**
+       * Disconnects the plugin (= kills the frame)
+       */
+      disconnect() {
+      if (!this._disconnected) {
+          this._disconnected = true;
+      }
+      if(this._disconnectHandler) this._disconnectHandler();
+      }
+  }
+
+  class ImJoyPlugin {
+      async setup() {
+      await api.register({
+          type: 'engine',
+          pluginType: 'jupyter-notebook',
+          icon: '🚀',
+          name: 'jupyter-notebook',
+          url: 'jupyter-notebook',
+          config: {},
+          connect(){
+          return true;
+          },
+          disconnect(){
+          throw "not implemented"
+          },
+          listPlugins: ()=>{
+          },
+          getPlugin: ()=>{
+          },
+          startPlugin: (config, api_interface)=>{
+          return new Promise((resolve, reject) => {
+              const pio = new PostMessageIO()
+              const connection = new PostMessageConnection(config.id, 'jupyter-notebook', config, pio);
+              connection.onInit(()=>{
+              const site = new JailedSite(connection, "__plugin__", "javascript");
+              site.onInterfaceSetAsRemote(async ()=>{
+                  for (let i = 0; i < config.scripts.length; i++) {
+                  await connection.execute({
+                      type: "script",
+                      content: config.scripts[i].content,
+                      lang: config.scripts[i].attrs.lang,
+                      attrs: config.scripts[i].attrs,
+                      src: config.scripts[i].attrs.src,
+                  });
+                  }
+                  site.onRemoteUpdate(() => {
+                  const remote_api = site.getRemote();
+                  console.log(`plugin ${config.name} (id=${config.id}) initialized.`, remote_api)
+                  resolve(remote_api)
+                  site.onDisconnect((details) => {
+                      config.terminate()
+                  })
+                  });
+                  site.requestRemote();
+              });
+              site.onDisconnect((details) => {
+                  console.log('disconnected.', details)
+                  reject('disconnected')
+              })
+              site.setInterface(api_interface);
+              })
+
+          });
+          },
+          getEngineInfo() {
+          return {}
+          },
+          getEngineStatus() {
+          throw "not implemented"
+          },
+          killPlugin(){
+
+          },
+          killPluginProcess(p) {
+          throw "not implemented"
+          },
+          heartbeat(){
+          return true
+          },
+          async startTerminal(){
+
+          }
+      })
+      api.showMessage(`Plugin engine jupyter-notebook connected.`)
+      }
+
+
+      async run(ctx) {
+      api.alert('hello world.')
+      }
+  }
+
+  api.export(new ImJoyPlugin())
 </script>
-    

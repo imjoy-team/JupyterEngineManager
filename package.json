@@ -10,6 +10,8 @@
     "watch": "webpack --watch",
     "serve": "webpack-dev-server",
     "stats": "webpack --profile --json > stats.json",
+    "format": "prettier --write \"{src,tests}/**/**\"",
+    "check-format": "prettier --check \"{src,tests}/**/**\"",
     "stats-prod": "webpack --profile --json --mode production > stats-prod.json",
     "analyze": "webpack-bundle-analyzer -p 9999 stats.json",
     "analyze-prod": "webpack-bundle-analyzer -p 9999 stats-prod.json",
