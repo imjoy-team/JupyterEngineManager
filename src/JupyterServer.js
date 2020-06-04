@@ -31,9 +31,9 @@ function normalizePath(path) {
 
 // converts HTML to text using Javascript
 function html2text(html) {
-  var tag = document.createElement('div');
+  var tag = document.createElement("div");
   tag.innerHTML = html;
-  
+
   return tag.innerText;
 }
 
@@ -64,11 +64,12 @@ export function executeCode(kernel, code) {
             // escape ANSI & HTML specials in plaintext:
             data = fixConsole(data);
             // data = util.autoLinkUrls(data);
+            data = html2text(data);
             // remove leading dash
-            data = data.replace(/^-+|-+$/g, '');
-            error_msg += html2text(data);
+            data = data.replace(/^-+|-+$/g, "");
+            error_msg += data;
           }
-          api.showStatus("Error: " + error_msg);
+          api.showStatus(error_msg);
           console.error(error_msg);
           reject(error_msg);
           return;
