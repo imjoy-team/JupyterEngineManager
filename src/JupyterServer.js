@@ -29,6 +29,14 @@ function normalizePath(path) {
   return path.replace(/^\//, "").replace(/\/$/, "");
 }
 
+// converts HTML to text using Javascript
+function html2text(html) {
+  var tag = document.createElement('div');
+  tag.innerHTML = html;
+  
+  return tag.innerText;
+}
+
 async function pingServer(url) {
   const response = await fetch(url);
   return response.status === 200;
@@ -56,9 +64,11 @@ export function executeCode(kernel, code) {
             // escape ANSI & HTML specials in plaintext:
             data = fixConsole(data);
             // data = util.autoLinkUrls(data);
-            error_msg += data;
+            // remove leading dash
+            data = data.replace(/^-+|-+$/g, '');
+            error_msg += html2text(data);
           }
-          api.showStatus(error_msg);
+          api.showStatus("Error: " + error_msg);
           console.error(error_msg);
           reject(error_msg);
           return;
