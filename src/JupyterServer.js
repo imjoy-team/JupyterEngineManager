@@ -49,9 +49,22 @@ export function executeCode(kernel, code) {
     });
     console.log(kernel, execution);
     execution.onIOPub = msg => {
-      if (msg.msg_type == "stream") {
-        if (msg.content.name == "stdout") {
-          api.showStatus(msg.content.text);
+      if (msg.msg_type === "stream") {
+        if (msg.content.name === "stdout" || msg.content.name === "stderr") {
+          let data = msg.content.text;
+          data = util.fixOverwrittenChars(data);
+          // escape ANSI & HTML specials in plaintext:
+          data = util.fixConsole(data);
+          // if error is detected
+          if (data.includes('<span class="ansi-red-fg">ERROR:')) {
+            reject(html2text(data));
+          }
+          data = html2text(data);
+          // data = util.autoLinkUrls(data);
+          api.showStatus(data);
+          if (data.startsWith("ERROR:")) console.error(data);
+          else if (data.startsWith("WARNING:")) console.warn(data);
+          else console.log(data);
         }
       }
     };
@@ -587,24 +600,50 @@ export default class JupyterServer {
         )}`
       );
       execution.onIOPub = msg => {
-        if (msg.msg_type == "stream") {
-          if (msg.content.name == "stdout") {
+        if (msg.msg_type === "stream") {
+          if (msg.content.name === "stdout" || msg.content.name === "stderr") {
             let data = msg.content.text;
             data = util.fixOverwrittenChars(data);
             // escape ANSI & HTML specials in plaintext:
             data = util.fixConsole(data);
-            data = util.autoLinkUrls(data);
+            // if Error is detected
+            if (data.includes('<span class="ansi-red-fg">ERROR:')) {
+              reject(html2text(data));
+            }
+            data = html2text(data);
+            // data = util.autoLinkUrls(data);
             api.showStatus(data);
-            console.log(data);
+            if (data.startsWith("ERROR:")) console.error(data);
+            else if (data.startsWith("WARNING:")) console.warn(data);
+            else console.log(data);
           }
         }
       };
-      execution.done.then(resolve).catch(reject);
+      execution.done
+        .then(reply => {
+          if (reply.content.status !== "ok") {
+            let error_msg = "";
+            for (let data of reply.content.traceback) {
+              data = fixOverwrittenChars(data);
+              // escape ANSI & HTML specials in plaintext:
+              data = fixConsole(data);
+              // data = util.autoLinkUrls(data);
+              data = html2text(data);
+              // remove leading dash
+              data = data.replace(/^-+|-+$/g, "");
+              error_msg += data;
+            }
+            api.showStatus(error_msg);
+            console.error(error_msg);
+            reject(error_msg);
+          } else resolve();
+        })
+        .catch(reject);
     });
   }
 
   async killKernel(kernel) {
-    if (kernel.close) kernel.close();
-    return kernel.shutdown();
+    if (kernel.close) return kernel.close();
+    else return kernel.shutdown();
   }
 }
