@@ -538,6 +538,7 @@ async function createNewEngine(engine_config) {
             var json_msg = JSON.parse(event.data);
             switch (json_msg[0]) {
               case "stdout":
+              case "stderr":
                 write(json_msg[1]);
                 break;
               case "disconnect":
