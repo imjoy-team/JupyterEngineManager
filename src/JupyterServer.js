@@ -152,7 +152,7 @@ function uploadFile(content_manager, file, path, display, progressbar) {
 
       // These codes to upload file in original class
       var upload_file = function(filedata, chunk) {
-        var format = 'text';
+        var format = "text";
         if (filedata instanceof ArrayBuffer) {
           // base64-encode binary file data
           var buf = new Uint8Array(filedata);
