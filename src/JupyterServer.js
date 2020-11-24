@@ -585,7 +585,8 @@ export default class JupyterServer {
                 " " +
                 (libs.length > 1 ? libs[1] : name)
             );
-          } else if (typ === "cmd" && libs) commands.push("!" + libs.join(" ").trim());
+          } else if (typ === "cmd" && libs)
+            commands.push("!" + libs.join(" ").trim());
           else if (typ.includes("+") || typ.includes("http"))
             commands.push(`!python -m pip install ${req}`);
           else throw `Unsupported requirement type: ${typ}`;
