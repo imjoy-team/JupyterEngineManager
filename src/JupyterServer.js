@@ -42,7 +42,7 @@ async function pingServer(url) {
   return response.status === 200;
 }
 
-export function executeCode(kernel, code) {
+export function executeCode(kernel, code, api) {
   return new Promise((resolve, reject) => {
     const execution = kernel.requestExecute({
       code: code
@@ -336,8 +336,10 @@ export default class JupyterServer {
     spec = DEFAULT_SPEC,
     baseUrl = DEFAULT_BASE_URL,
     provider = DEFAULT_PROVIDER,
-    nbUrl = false
+    nbUrl = false,
+    imjoy_interface = api
   } = {}) {
+    this.api = imjoy_interface;
     let serverSettings = null;
     let server_url = null,
       server_token = null;
@@ -359,7 +361,7 @@ export default class JupyterServer {
         });
         const kernelSpecs = await Kernel.getSpecs(serverSettings);
         console.log("reusing an existing server: ", url, kernelSpecs);
-        api.log("Connected to an existing server: " + url);
+        this.api.log("Connected to an existing server: " + url);
       } catch (e) {
         console.log(
           "failed to reuse an existing server, will start another one."
@@ -372,8 +374,8 @@ export default class JupyterServer {
       const binder = new BinderHub({ spec, baseUrl, provider, nbUrl });
       binder.registerCallback("*", (oldState, newState, data) => {
         if (data.message !== undefined) {
-          api.log(data.message);
-          api.showStatus(data.message);
+          this.api.log(data.message);
+          this.api.showStatus(data.message);
         } else {
           console.log(data);
         }
@@ -382,7 +384,7 @@ export default class JupyterServer {
       server_url = url;
       server_token = token;
 
-      api.log("New server started: " + url);
+      this.api.log("New server started: " + url);
 
       // Connect to the notebook webserver.
       serverSettings = ServerConnection.makeSettings({
@@ -522,12 +524,12 @@ export default class JupyterServer {
         name: kernelSpecName,
         serverSettings
       });
-      api.showStatus("Waiting for kernel to start...");
+      this.api.showStatus("Waiting for kernel to start...");
       await kernel.ready;
       if (this.knownKernels.indexOf(kernel.name) < 0) {
         this.knownKernels.push(kernel.name);
-        api.showStatus("Installing imjoy to the kernel...");
-        await executeCode(kernel, "!python -m pip install -U imjoy");
+        this.api.showStatus("Installing imjoy to the kernel...");
+        await executeCode(kernel, "!python -m pip install -U imjoy", this.api);
       }
       this.setupKernelCallbacks(kernel);
       // Store the params in localStorage for later use
@@ -543,7 +545,7 @@ export default class JupyterServer {
       };
       localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
 
-      api.log("Kernel started: " + kernel.id);
+      this.api.log("Kernel started: " + kernel.id);
       return kernel;
     } catch (err) {
       console.error("Error in kernel initialization :(");
@@ -596,7 +598,7 @@ export default class JupyterServer {
       }
 
       let execution = kernel.requestExecute({ code: commands.join("\n") });
-      api.log(
+      this.api.log(
         `Installing requirements for kernel ${kernel.id}: ${JSON.stringify(
           commands
         )}`
@@ -614,7 +616,7 @@ export default class JupyterServer {
             }
             data = html2text(data);
             // data = util.autoLinkUrls(data);
-            api.showStatus(data);
+            this.api.showStatus(data);
             if (data.startsWith("ERROR:")) console.error(data);
             else if (data.startsWith("WARNING:")) console.warn(data);
             else console.log(data);
@@ -635,7 +637,7 @@ export default class JupyterServer {
               data = data.replace(/^-+|-+$/g, "");
               error_msg += data;
             }
-            api.showStatus(error_msg);
+            this.api.showStatus(error_msg);
             console.error(error_msg);
             reject(error_msg);
           } else resolve();

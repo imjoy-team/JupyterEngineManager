@@ -3,7 +3,7 @@ import { executeCode } from "./JupyterServer";
 import { put_buffers, remove_buffers, MessageEmitter } from "./util";
 
 export default class JupyterConnection extends MessageEmitter {
-  constructor(id, type, config, kernel) {
+  constructor(id, type, config, kernel, imjoy_interface) {
     super(config && config.debug);
     this._disconnected = false;
     this.id = id;
@@ -15,6 +15,7 @@ export default class JupyterConnection extends MessageEmitter {
 
     this.kernel = kernel;
     this.config = config;
+    this.api = imjoy_interface;
 
     const config_ = {
       api_version: config.api_version,
@@ -79,12 +80,12 @@ export default class JupyterConnection extends MessageEmitter {
       try {
         const client_id = plugin_id;
         console.log("connecting ImJoy worker...");
-        api.showStatus(
+        this.api.showStatus(
           "Executing plugin script for " + this.config.name + "..."
         );
         for (let i = 0; i < this.config.scripts.length; i++) {
           if (this.config.scripts[i].attrs.lang === "python")
-            await executeCode(kernel, this.config.scripts[i].content);
+            await executeCode(kernel, this.config.scripts[i].content, this.api);
           else
             console.error(
               "unsupported script type: " + this.config.scripts[i].attrs.lang
@@ -92,7 +93,7 @@ export default class JupyterConnection extends MessageEmitter {
         }
         console.log("starting jupyter client ...", client_id);
         this.comm = this.setup_comm(kernel);
-        api.showStatus(`${this.config.name} is ready.`);
+        this.api.showStatus(`${this.config.name} is ready.`);
         console.log("ImJoy worker connected...");
         resolve(this.comm);
       } catch (e) {
@@ -136,7 +137,7 @@ export default class JupyterConnection extends MessageEmitter {
       split.state.__buffer_paths__ = split.buffer_paths;
       this.comm.send(split.state, {}, {}, split.buffers);
     } else {
-      api.showMessage(
+      this.api.showMessage(
         "The jupyter kernel is disconnected, maybe try to reload the plugin?"
       );
       // this.reconnect().then(()=>{

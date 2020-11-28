@@ -7,7 +7,8 @@ export function setupPlugin(kernel, config, imjoy_interface, engine_utils) {
       config.id,
       "native-python",
       config,
-      kernel
+      kernel,
+      imjoy_interface
     );
     connection.once("imjoyRPCReady", async data => {
       const config = data.config || {};
@@ -88,11 +89,10 @@ export function setupPlugin(kernel, config, imjoy_interface, engine_utils) {
         const remote_api = site.getRemote();
         remote_api.ENGINE_URL = kernel.serverSettings.baseUrl;
         remote_api.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
-        console.log(
-          `plugin ${config.name} (id=${config.id}) initialized.`,
-          remote_api
+        imjoy_interface.log(
+          `plugin ${config.name} (id=${config.id}) initialized.`
         );
-        api.showStatus(`🎉Plugin "${config.name}" is ready.`);
+        imjoy_interface.showStatus(`🎉Plugin "${config.name}" is ready.`);
         resolve(remote_api);
       });
       site.once("interfaceSetAsRemote", () => {
