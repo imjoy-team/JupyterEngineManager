@@ -227,7 +227,7 @@ async function createNewEngine(engine_config) {
 
         try {
           api.showMessage("Connecting to server " + serverUrl + "...");
-          await jserver.startServer(engine_config);
+          await jserver.startServer(engine_config, api);
           api.showMessage("🎉Connected to server " + serverUrl + ".");
         } catch (e) {
           if (e.toString().includes("403 Forbidden")) {
@@ -291,7 +291,10 @@ async function createNewEngine(engine_config) {
             kernelSpecName = null,
             skipRequirements = false;
           if (engine_config.nbUrl) {
-            serverSettings = await jserver.startServer(engine_config);
+            serverSettings = await jserver.startServer(
+              engine_config,
+              imjoy_interface
+            );
           } else {
             if (!localStorage.binder_confirmation_shown) {
               const ret = await api.confirm({
@@ -329,7 +332,10 @@ async function createNewEngine(engine_config) {
             }
             console.log("Starting server with binder spec", binderSpec);
             engine_config.spec = binderSpec;
-            serverSettings = await jserver.startServer(engine_config);
+            serverSettings = await jserver.startServer(
+              engine_config,
+              imjoy_interface
+            );
           }
 
           const kernel = await jserver.startKernel(
