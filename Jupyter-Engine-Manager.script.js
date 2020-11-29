@@ -37,31 +37,50 @@ async function setup() {
     type: "engine-factory",
     name: "MyBinder-Engine",
     addEngine: addMyBinderEngine,
-    removeEngine: removeEngine
+    async removeEngine(engine_config) {
+      if (
+        await api.confirm(
+          `Do you really want to remove the engine ${engine_config.name}?`
+        )
+      ) {
+        return await removeEngine(engine_config);
+      }
+    }
   });
 
   await api.register({
     type: "engine-factory",
     name: "Jupyter-Engine",
     addEngine: addJupyterEngine,
-    removeEngine: removeEngine
+    async removeEngine(engine_config) {
+      if (
+        await api.confirm(
+          `Do you really want to remove the engine ${engine_config.name}?`
+        )
+      ) {
+        return await removeEngine(engine_config);
+      }
+    }
   });
 
   // create the binder plugin for the first time
   const temp = await api.getConfig("engines");
   if (!temp) {
-    createNewEngine({
-      name: "MyBinder Engine",
-      url: DEFAULT_BASE_URL,
-      spec: DEFAULT_SPEC,
-      connected: true
-    });
+    createEngine(
+      {
+        name: "MyBinder Engine",
+        url: DEFAULT_BASE_URL,
+        spec: DEFAULT_SPEC,
+        connected: true
+      },
+      true
+    );
   }
 
   let saved_engines = await save_engine_config();
   for (let url in saved_engines) {
     const config = saved_engines[url];
-    createNewEngine(config);
+    createEngine(config, true);
   }
   api.log("initialized");
 }
@@ -124,7 +143,7 @@ async function addJupyterEngine() {
     dialog.close();
     config.url = config.nbUrl.split("?")[0];
     config.connected = true;
-    createNewEngine(config);
+    createEngine(config, true);
   });
 }
 
@@ -193,7 +212,7 @@ async function addMyBinderEngine() {
   dialog.on("add", async config => {
     dialog.close();
     config.connected = true;
-    createNewEngine(config);
+    createEngine(config, true);
   });
 }
 
@@ -204,7 +223,7 @@ async function pingServer(url) {
 
 const registered_engines = {};
 
-async function createNewEngine(engine_config) {
+async function createEngine(engine_config, saveEngine) {
   const engine_kernels = {};
   let _connected = false;
   let initial_connection = engine_config.connected;
@@ -256,7 +275,7 @@ async function createNewEngine(engine_config) {
       }
       _connected = true;
       engine_config.connected = true;
-      await save_engine_config(engine_config);
+      if (saveEngine) await save_engine_config(engine_config);
       return true;
     },
     async disconnect() {
@@ -276,7 +295,7 @@ async function createNewEngine(engine_config) {
 
       _connected = false;
       engine_config.connected = false;
-      await save_engine_config(engine_config);
+      if (saveEngine) await save_engine_config(engine_config);
     },
     listPlugins: () => {},
     getPlugin: () => {},
@@ -588,21 +607,17 @@ async function createNewEngine(engine_config) {
 }
 
 async function removeEngine(engine_config) {
-  if (
-    await api.confirm(
-      `Do you really want to remove the engine ${engine_config.name}?`
-    )
-  ) {
-    if (registered_engines[engine_config.name]) {
-      registered_engines[engine_config.name].disconnect();
-    }
-    let saved_engines = await save_engine_config();
-    delete saved_engines[engine_config.url];
-    await api.setConfig("engines", JSON.stringify(saved_engines));
-    return true;
+  if (registered_engines[engine_config.name]) {
+    registered_engines[engine_config.name].disconnect();
   }
+  let saved_engines = await save_engine_config();
+  delete saved_engines[engine_config.url];
+  await api.setConfig("engines", JSON.stringify(saved_engines));
+  return true;
 }
 
 api.export({
-  setup: setup
+  setup,
+  createEngine,
+  removeEngine
 });
