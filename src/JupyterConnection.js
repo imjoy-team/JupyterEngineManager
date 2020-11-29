@@ -68,7 +68,7 @@ export default class JupyterConnection extends MessageEmitter {
       }
     };
     comm.onClose = msg => {
-      console.log("comm closed, reconnecting", id, msg);
+      console.log("comm closed, reconnecting", this.id, msg);
       this.reconnect();
       reject("Comm is closed");
     };
