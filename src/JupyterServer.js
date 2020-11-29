@@ -331,15 +331,17 @@ export default class JupyterServer {
     return { serverSettings, kernelModel };
   }
 
-  async startServer({
-    name = null,
-    spec = DEFAULT_SPEC,
-    baseUrl = DEFAULT_BASE_URL,
-    provider = DEFAULT_PROVIDER,
-    nbUrl = false,
-    imjoy_interface = api
-  } = {}) {
-    this.api = imjoy_interface;
+  async startServer(
+    {
+      name = null,
+      spec = DEFAULT_SPEC,
+      baseUrl = DEFAULT_BASE_URL,
+      provider = DEFAULT_PROVIDER,
+      nbUrl = false
+    } = {},
+    api
+  ) {
+    api = api || window.api;
     let serverSettings = null;
     let server_url = null,
       server_token = null;
@@ -361,7 +363,7 @@ export default class JupyterServer {
         });
         const kernelSpecs = await Kernel.getSpecs(serverSettings);
         console.log("reusing an existing server: ", url, kernelSpecs);
-        this.api.log("Connected to an existing server: " + url);
+        api.log("Connected to an existing server: " + url);
       } catch (e) {
         console.log(
           "failed to reuse an existing server, will start another one."
@@ -374,8 +376,8 @@ export default class JupyterServer {
       const binder = new BinderHub({ spec, baseUrl, provider, nbUrl });
       binder.registerCallback("*", (oldState, newState, data) => {
         if (data.message !== undefined) {
-          this.api.log(data.message);
-          this.api.showStatus(data.message);
+          api.log(data.message);
+          api.showStatus(data.message);
         } else {
           console.log(data);
         }
@@ -384,7 +386,7 @@ export default class JupyterServer {
       server_url = url;
       server_token = token;
 
-      this.api.log("New server started: " + url);
+      api.log("New server started: " + url);
 
       // Connect to the notebook webserver.
       serverSettings = ServerConnection.makeSettings({
@@ -512,7 +514,7 @@ export default class JupyterServer {
     return serverSettings;
   }
 
-  async startKernel(key, serverSettings, kernelSpecName) {
+  async startKernel(key, serverSettings, kernelSpecName, api) {
     try {
       // Start a kernel
       if (!kernelSpecName) {
@@ -524,12 +526,12 @@ export default class JupyterServer {
         name: kernelSpecName,
         serverSettings
       });
-      this.api.showStatus("Waiting for kernel to start...");
+      api.showStatus("Waiting for kernel to start...");
       await kernel.ready;
       if (this.knownKernels.indexOf(kernel.name) < 0) {
         this.knownKernels.push(kernel.name);
-        this.api.showStatus("Installing imjoy to the kernel...");
-        await executeCode(kernel, "!python -m pip install -U imjoy", this.api);
+        api.showStatus("Installing imjoy to the kernel...");
+        await executeCode(kernel, "!python -m pip install -U imjoy", api);
       }
       this.setupKernelCallbacks(kernel);
       // Store the params in localStorage for later use
@@ -545,7 +547,7 @@ export default class JupyterServer {
       };
       localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
 
-      this.api.log("Kernel started: " + kernel.id);
+      api.log("Kernel started: " + kernel.id);
       return kernel;
     } catch (err) {
       console.error("Error in kernel initialization :(");
@@ -553,7 +555,7 @@ export default class JupyterServer {
     }
   }
 
-  installRequirements(kernel, reqs, conda_available) {
+  installRequirements(kernel, reqs, conda_available, api) {
     return new Promise(async (resolve, reject) => {
       const commands = []; //'!python -m pip install --upgrade pip'
       if (!Array.isArray(reqs)) {
@@ -598,7 +600,7 @@ export default class JupyterServer {
       }
 
       let execution = kernel.requestExecute({ code: commands.join("\n") });
-      this.api.log(
+      api.log(
         `Installing requirements for kernel ${kernel.id}: ${JSON.stringify(
           commands
         )}`
@@ -616,7 +618,7 @@ export default class JupyterServer {
             }
             data = html2text(data);
             // data = util.autoLinkUrls(data);
-            this.api.showStatus(data);
+            api.showStatus(data);
             if (data.startsWith("ERROR:")) console.error(data);
             else if (data.startsWith("WARNING:")) console.warn(data);
             else console.log(data);
@@ -637,7 +639,7 @@ export default class JupyterServer {
               data = data.replace(/^-+|-+$/g, "");
               error_msg += data;
             }
-            this.api.showStatus(error_msg);
+            api.showStatus(error_msg);
             console.error(error_msg);
             reject(error_msg);
           } else resolve();
