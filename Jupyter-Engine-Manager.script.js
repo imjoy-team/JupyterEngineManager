@@ -227,7 +227,7 @@ async function createNewEngine(engine_config) {
 
         try {
           api.showMessage("Connecting to server " + serverUrl + "...");
-          await jserver.startServer(engine_config, api);
+          await jserver.startServer(engine_config);
           api.showMessage("🎉Connected to server " + serverUrl + ".");
         } catch (e) {
           if (e.toString().includes("403 Forbidden")) {
@@ -341,7 +341,8 @@ async function createNewEngine(engine_config) {
           const kernel = await jserver.startKernel(
             config.name,
             serverSettings,
-            kernelSpecName
+            kernelSpecName,
+            imjoy_interface
           );
 
           api.showMessage(
@@ -353,7 +354,8 @@ async function createNewEngine(engine_config) {
             await jserver.installRequirements(
               kernel,
               config.requirements,
-              true
+              true,
+              imjoy_interface
             );
           }
           kernel.pluginId = config.id;
