@@ -204,32 +204,40 @@ export default class JupyterServer {
     this.cached_servers = {};
     this.registered_file_managers = {};
     this.knownKernels = [];
-
-    if (localStorage.jupyter_servers) {
-      try {
-        this.cached_servers = JSON.parse(localStorage.jupyter_servers);
-        console.log("kernels loaded:", this.cached_servers);
-        for (let k in this.cached_servers) {
-          const { url, token } = this.cached_servers[k];
-          // check if the server is alive, otherwise remove it
-          const serverSettings = ServerConnection.makeSettings({
-            baseUrl: url,
-            wsUrl: baseToWsUrl(url),
-            token: token
-          });
-          Kernel.getSpecs(serverSettings).catch(() => {
-            delete this.cached_servers[k];
-          });
-        }
-      } catch (e) {}
+    try {
+      if (localStorage.jupyter_servers) {
+        try {
+          this.cached_servers = JSON.parse(localStorage.jupyter_servers);
+          console.log("kernels loaded:", this.cached_servers);
+          for (let k in this.cached_servers) {
+            const { url, token } = this.cached_servers[k];
+            // check if the server is alive, otherwise remove it
+            const serverSettings = ServerConnection.makeSettings({
+              baseUrl: url,
+              wsUrl: baseToWsUrl(url),
+              token: token
+            });
+            Kernel.getSpecs(serverSettings).catch(() => {
+              delete this.cached_servers[k];
+            });
+          }
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.error(e);
     }
     this.cached_kernels = {};
-    if (localStorage.jupyter_kernels) {
-      try {
-        this.cached_kernels = JSON.parse(localStorage.jupyter_kernels);
-        console.log("kernels loaded:", this.cached_kernels);
-      } catch (e) {}
+    try {
+      if (localStorage.jupyter_kernels) {
+        try {
+          this.cached_kernels = JSON.parse(localStorage.jupyter_kernels);
+          console.log("kernels loaded:", this.cached_kernels);
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.error(e);
     }
+
     console.log(
       "cached servers: ",
       this.cached_servers,
@@ -255,8 +263,12 @@ export default class JupyterServer {
         delete this.cached_kernels[k];
       }
     }
+    try {
+      localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
+    } catch (e) {
+      console.error(e);
+    }
 
-    localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
     setTimeout(this._kernelHeartbeat, seconds_between_check * 1000);
   }
 
@@ -398,7 +410,11 @@ export default class JupyterServer {
       const kernelSpecs = await Kernel.getSpecs(serverSettings);
 
       this.cached_servers[config_str] = { url, token };
-      localStorage.jupyter_servers = JSON.stringify(this.cached_servers);
+      try {
+        localStorage.jupyter_servers = JSON.stringify(this.cached_servers);
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     if (!this.registered_file_managers[server_url]) {
@@ -406,20 +422,20 @@ export default class JupyterServer {
       const url = server_url;
       const token = server_token;
       let name = new URL(url);
-      let _file_list = [];
+      // let _file_list = [];
       let fail_count = 20;
       name = name.pathname === "/" ? name.hostname : name.pathname;
       let enable_show_file_dialog = false;
       if (await pingServer(server_url + "elfinder" + "?token=" + token)) {
         enable_show_file_dialog = true;
       }
-      await api.register({
+      await window.api.register({
         type: "file-manager",
         name: name,
         url: url,
         showFileDialog: enable_show_file_dialog
           ? async config => {
-              const w = await api.showDialog({
+              const w = await window.api.showDialog({
                 name: "File Manager " + name,
                 src: server_url + "elfinder" + "?token=" + token,
                 config: config
@@ -438,7 +454,7 @@ export default class JupyterServer {
           const response = await fetch(file_url);
           const files = await response.json();
           files.children = files.content;
-          _file_list = files.content;
+          // _file_list = files.content;
           console.log("listing files", file_url, files);
           return files;
         },
@@ -472,8 +488,8 @@ export default class JupyterServer {
             contents,
             file,
             path,
-            api.showMessage,
-            api.showProgress
+            window.api.showMessage,
+            window.api.showProgress
           );
           // throw "File upload is not supported"
         },
@@ -495,7 +511,7 @@ export default class JupyterServer {
             fail_count--;
             if (fail_count <= 0) {
               console.log("Removing file manager.");
-              api.unregister({
+              window.api.unregister({
                 type: "file-manager",
                 url: url
               });
@@ -545,8 +561,11 @@ export default class JupyterServer {
         token: serverSettings.token,
         kernelId: kernel.id
       };
-      localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
-
+      try {
+        localStorage.jupyter_kernels = JSON.stringify(this.cached_kernels);
+      } catch (e) {
+        console.error(e);
+      }
       api.log("Kernel started: " + kernel.id);
       return kernel;
     } catch (err) {
