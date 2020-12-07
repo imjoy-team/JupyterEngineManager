@@ -315,17 +315,21 @@ async function createEngine(engine_config, saveEngine) {
               imjoy_interface
             );
           } else {
-            if (!localStorage.binder_confirmation_shown) {
-              const ret = await api.confirm({
-                title: "📌Notice: About to run plugin on mybinder.org",
-                content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue? <br> (You won't see this message again if you select Yes)`,
-                confirm_text: "Yes"
-              });
-              if (!ret) {
-                reject("User canceled plugin execution.");
-                return;
+            try {
+              if (!localStorage.binder_confirmation_shown) {
+                const ret = await api.confirm({
+                  title: "📌Notice: About to run plugin on mybinder.org",
+                  content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue? <br> (You won't see this message again if you select Yes)`,
+                  confirm_text: "Yes"
+                });
+                if (!ret) {
+                  reject("User canceled plugin execution.");
+                  return;
+                }
+                localStorage.binder_confirmation_shown = true;
               }
-              localStorage.binder_confirmation_shown = true;
+            } catch (e) {
+              console.error(e);
             }
 
             if (imjoy_interface.TAG && imjoy_interface.TAG.includes("GPU")) {
