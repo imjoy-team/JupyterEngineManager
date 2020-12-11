@@ -1,19 +1,10 @@
-const webpack = require('webpack')
 const path = require('path')
-const CleanWebpackPlugin = require('clean-webpack-plugin')
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const HtmlReplaceWebpackPlugin = require('html-replace-webpack-plugin')
 // const WriteFilePlugin = require('write-file-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
   .BundleAnalyzerPlugin
-
-// Use the shim() function to stub out unneeded modules. Used to cut down
-// bundle size since tree-shaking doesn't work with Typescript modules.
-const shimJS = path.resolve(__dirname, 'src', 'emptyshim.js')
-function shim(regExp) {
-  return new webpack.NormalModuleReplacementPlugin(regExp, shimJS)
-}
 
 const config =  (env, argv) => ({
   mode: 'development',
@@ -23,8 +14,10 @@ const config =  (env, argv) => ({
   output: {
     filename: 'index.bundle.js',
     path: path.resolve(__dirname, 'dist'),
+    library: 'JupyterEngineManager',
+    libraryTarget: 'umd',
+    umdNamedDefine: true
   },
-  devtool: 'cheap-module-eval-source-map',
   devServer: {
     contentBase: path.resolve(__dirname, 'dist'),
     publicPath: '/',
@@ -37,46 +30,14 @@ const config =  (env, argv) => ({
     }
   },
   plugins: [
-    shim(/moment/),
-    shim(/comment-json/),
-
-    shim(/@jupyterlab\/apputils/),
-    shim(/@jupyterlab\/codemirror/),
-    shim(/codemirror\/keymap\/vim/),
-    shim(/codemirror\/addon\/search/),
-
-    shim(/elliptic/),
-    shim(/bn\.js/),
-    shim(/readable\-stream/),
-
-    // shim out some unused phosphor
-    shim(
-      /@phosphor\/widgets\/lib\/(commandpalette|box|dock|grid|menu|scroll|split|stacked|tab).*/,
-    ),
-    shim(/@phosphor\/(dragdrop|commands).*/),
-
-    shim(/@jupyterlab\/codeeditor\/lib\/jsoneditor/),
-    shim(/@jupyterlab\/coreutils\/lib\/(time|settingregistry|.*menu.*)/),
-    shim(/@jupyterlab\/services\/lib\/(session|contents|terminal)\/.*/),
-
     // new CleanWebpackPlugin(['dist']),
     new CopyPlugin([
       { from: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.script.js'), to: path.resolve(__dirname, 'dist')}
-    ]),
-    new CopyPlugin([
-      { from: path.resolve(__dirname, 'src', 'Jupyter-Notebook.imjoy.html'), to: path.resolve(__dirname, 'dist')}
     ]),
     new HtmlWebpackPlugin(
       {
         filename: 'Jupyter-Engine-Manager.imjoy.html',
         template: path.resolve(__dirname, 'src', 'Jupyter-Engine-Manager.imjoy.html'),
-        inject: false
-      }
-    ),
-    new HtmlWebpackPlugin(
-      {
-        filename: 'ImJoy-elFinder.imjoy.html',
-        template: path.resolve(__dirname, 'src', 'ImJoy-elFinder.imjoy.html'),
         inject: false
       }
     ),
@@ -112,6 +73,7 @@ const config =  (env, argv) => ({
                 {
                   targets: { browsers: ['last 2 Chrome versions'] },
                   useBuiltIns: 'entry',
+                  corejs: '3.0.0',
                   modules: false,
                 },
               ],
