@@ -245,7 +245,7 @@ async function createEngine(engine_config, saveEngine) {
         const serverUrl = engine_config.nbUrl.split("?")[0];
 
         try {
-          api.showMessage("Connecting to server " + serverUrl + "...");
+          api.showMessage("Connecting to plugin engine " + serverUrl + "...");
           await jserver.startServer(engine_config);
           api.showMessage("🎉Connected to server " + serverUrl + ".");
         } catch (e) {
@@ -258,7 +258,7 @@ async function createEngine(engine_config, saveEngine) {
             );
           } else {
             console.error(e);
-            api.showMessage("Failed to connect to server " + serverUrl + ".");
+            api.showMessage("Failed to connect to plugin engine " + serverUrl + ".");
           }
           throw e;
         }
