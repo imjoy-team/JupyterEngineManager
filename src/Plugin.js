@@ -84,6 +84,10 @@ export function setupPlugin(kernel, config, imjoy_interface, engine_utils) {
       });
       imjoy_interface.ENGINE_URL = kernel.serverSettings.baseUrl;
       imjoy_interface.FILE_MANAGER_URL = kernel.serverSettings.baseUrl;
+      imjoy_interface.config = {
+        engine: kernel.serverSettings.baseUrl,
+        file_manager: kernel.serverSettings.baseUrl
+      };
       site.setInterface(imjoy_interface);
       site.once("remoteReady", function() {
         const remote_api = site.getRemote();

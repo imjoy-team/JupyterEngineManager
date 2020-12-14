@@ -465,7 +465,7 @@ export default class JupyterServer {
         getFileUrl(config) {
           // contents.getDownloadUrl(config.path)
           const path = normalizePath(config.path);
-          return `${url}view/${encodeURIComponent(path)}?token=${token}`;
+          return `${url}files/${encodeURIComponent(path)}?token=${token}`;
         },
         async createFolder(folder_name) {
           let root = ".";
