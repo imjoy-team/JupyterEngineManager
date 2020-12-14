@@ -18,6 +18,9 @@ const baseToWsUrl = baseUrl =>
 
 function normalizePath(path) {
   path = Array.prototype.join.apply(arguments, ["/"]);
+  if(path.startsWith('/') || /^[A-Za-z]:\\/.test(path)){
+    throw new Error("Due to security reasons, absolute path is not allowed, please use relative path to the current working directory.")
+  }
   var sPath;
   while (sPath !== path) {
     sPath = n(path);
