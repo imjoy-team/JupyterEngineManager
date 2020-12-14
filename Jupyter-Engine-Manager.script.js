@@ -234,6 +234,19 @@ async function loadEngine(engine_config, saveEngine) {
     const engine_kernels = {};
     let _connected = false;
     let initial_connection = !engine_config.disabled;
+    const killPlugin = config => {
+      for (let k in jserver._kernels) {
+        const kernel = jserver._kernels[k];
+        if (kernel.pluginName === config.name) {
+          try {
+            console.log("killing plugin", config.name);
+            jserver.killKernel(kernel);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
     await api.register({
       type: "engine",
       pluginType: "native-python",
@@ -320,73 +333,114 @@ async function loadEngine(engine_config, saveEngine) {
             return;
           }
           try {
-            let serverSettings,
-              kernelSpecName = null,
-              skipRequirements = false;
-            if (engine_config.nbUrl) {
-              serverSettings = await jserver.startServer(
-                engine_config,
-                imjoy_interface
-              );
-            } else {
-              try {
-                if (!localStorage.binder_confirmation_shown) {
+            let kernel;
+            let skipRequirements = false;
+            // try to restore the previous kernel
+            if (config.hot_reloading) {
+              for (const kid of Object.keys(engine_kernels)) {
+                if (
+                  engine_kernels[kid].status !== "dead" &&
+                  engine_kernels[kid].pluginName === config.name
+                ) {
+                  kernel = engine_kernels[kid];
+                  console.log("Reusing an existing kernel: " + kernel.id);
+                  break;
+                }
+              }
+              if (
+                kernel &&
+                kernel.installedRequirements ===
+                  JSON.stringify(config.requirements)
+              ) {
+                skipRequirements = true;
+              }
+            }
+            if (!kernel) {
+              // try{
+              //   killPlugin({
+              //     id: config.id,
+              //     name: config.name,
+              //   });
+              // }
+              // catch(e){
+              //   console.error(e)
+              // }
+
+              let serverSettings,
+                kernelSpecName = null;
+
+              if (engine_config.nbUrl) {
+                serverSettings = await jserver.startServer(
+                  engine_config,
+                  imjoy_interface
+                );
+              } else {
+                try {
+                  if (!localStorage.binder_confirmation_shown) {
+                    const ret = await api.confirm({
+                      title: "📌Notice: About to run plugin on mybinder.org",
+                      content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue? <br> (You won't see this message again if you select Yes)`,
+                      confirm_text: "Yes"
+                    });
+                    if (!ret) {
+                      reject("User canceled plugin execution.");
+                      return;
+                    }
+                    localStorage.binder_confirmation_shown = true;
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+
+                if (
+                  imjoy_interface.TAG &&
+                  imjoy_interface.TAG.includes("GPU")
+                ) {
                   const ret = await api.confirm({
-                    title: "📌Notice: About to run plugin on mybinder.org",
-                    content: `You are going to run <code>${config.name}</code> on a public cloud server provided by <a href="https://mybinder.org" target="_blank">MyBinder.org</a>, please be aware of the following: <br><br> 1. This feature is currently in development, more improvements will come soon; <br> 2. The computational resources provided by MyBinder.org are limited (e.g. 1GB memory, no GPU support); <br>3. Please do not use it to process sensitive data. <br><br> For more stable use, please setup your own <a href="https://jupyter.org/" target="_blank">Jupyter notebook</a>. <br> <br> If you encountered any issue, please report it on the <a href="https://github.com/oeway/ImJoy/issues" target="_blank">ImJoy repo</a>. <br><br> Do you want to continue? <br> (You won't see this message again if you select Yes)`,
+                    title: "📌Running plugin that requires GPU?",
+                    content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`,
                     confirm_text: "Yes"
                   });
                   if (!ret) {
                     reject("User canceled plugin execution.");
                     return;
                   }
-                  localStorage.binder_confirmation_shown = true;
                 }
-              } catch (e) {
-                console.error(e);
-              }
-
-              if (imjoy_interface.TAG && imjoy_interface.TAG.includes("GPU")) {
-                const ret = await api.confirm({
-                  title: "📌Running plugin that requires GPU?",
-                  content: `It seems you are trying to run a plugin with GPU tag, however, please notice that the server on MyBinder.org does NOT support GPU. <br><br> Do you want to continue?`,
-                  confirm_text: "Yes"
-                });
-                if (!ret) {
-                  reject("User canceled plugin execution.");
-                  return;
-                }
-              }
-              let binderSpec = DEFAULT_SPEC;
-              if (Array.isArray(config.env)) {
-                for (let e of config.env) {
-                  if (e.type === "binder" && e.spec) {
-                    binderSpec = e.spec;
-                    kernelSpecName = e.kernel;
-                    skipRequirements = e.skip_requirements;
+                let binderSpec = DEFAULT_SPEC;
+                if (Array.isArray(config.env)) {
+                  for (let e of config.env) {
+                    if (e.type === "binder" && e.spec) {
+                      binderSpec = e.spec;
+                      kernelSpecName = e.kernel;
+                      skipRequirements = e.skip_requirements;
+                    }
                   }
                 }
+                console.log("Starting server with binder spec", binderSpec);
+                engine_config.spec = binderSpec;
+                serverSettings = await jserver.startServer(
+                  engine_config,
+                  imjoy_interface
+                );
               }
-              console.log("Starting server with binder spec", binderSpec);
-              engine_config.spec = binderSpec;
-              serverSettings = await jserver.startServer(
-                engine_config,
+              kernel = await jserver.startKernel(
+                config.name,
+                serverSettings,
+                kernelSpecName,
                 imjoy_interface
               );
+              api.showMessage(
+                "🎉 Jupyter Kernel started (" + serverSettings.baseUrl + ")"
+              );
+              kernel.pluginId = config.id;
+              kernel.pluginName = config.name;
+              engine_kernels[kernel.id] = kernel;
+              kernel.onClose(() => {
+                engine_utils.terminatePlugin();
+              });
             }
-
-            const kernel = await jserver.startKernel(
-              config.name,
-              serverSettings,
-              kernelSpecName,
-              imjoy_interface
-            );
-
-            api.showMessage(
-              "🎉 Jupyter Kernel started (" + serverSettings.baseUrl + ")"
-            );
             if (skipRequirements) {
-              console.log("skipping requirements according to binder spec");
+              console.log("skipping requirements...");
             } else {
               await jserver.installRequirements(
                 kernel,
@@ -394,13 +448,11 @@ async function loadEngine(engine_config, saveEngine) {
                 true,
                 imjoy_interface
               );
+              kernel.installedRequirements = JSON.stringify(
+                config.requirements
+              );
             }
-            kernel.pluginId = config.id;
-            kernel.pluginName = config.name;
-            engine_kernels[kernel.id] = kernel;
-            kernel.onClose(() => {
-              engine_utils.terminatePlugin();
-            });
+
             try {
               const plugin_api = await JupyterEngineManager.setupPlugin(
                 kernel,
@@ -460,24 +512,12 @@ async function loadEngine(engine_config, saveEngine) {
         };
         // return engine.updateEngineStatus()
       },
-      killPlugin(config) {
-        console.log("killing plugin", config, jserver._kernels);
-        for (let k in jserver._kernels) {
-          const kernel = jserver._kernels[k];
-          if (kernel.pluginId === config.id) {
-            try {
-              jserver.killKernel(kernel);
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        }
-      },
+      killPlugin,
       async killPluginProcess(p) {
         // kernel.close()
         try {
           if (jserver._kernels[p.pid]) {
-            await jserver.killKernel(jserver._kernels[p.pid]);
+            jserver.killKernel(jserver._kernels[p.pid]);
           } else {
             const serverSettings = ServerConnection.makeSettings(p);
             const kernelModel = await Kernel.findById(p.pid, serverSettings);
