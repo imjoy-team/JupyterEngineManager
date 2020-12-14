@@ -70,17 +70,17 @@ async function setup() {
       {
         name: "MyBinder Engine",
         url: DEFAULT_BASE_URL,
-        spec: DEFAULT_SPEC,
-        connected: true
+        spec: DEFAULT_SPEC
       },
       true
     );
   }
 
+  // restoring the plugin state
   let saved_engines = await save_engine_config();
   for (let url in saved_engines) {
     const config = saved_engines[url];
-    createEngine(config, true);
+    loadEngine(config, true);
   }
   api.log("initialized");
 }
@@ -142,7 +142,7 @@ async function addJupyterEngine() {
   dialog.on("add", async config => {
     dialog.close();
     config.url = config.nbUrl.split("?")[0];
-    config.connected = true;
+    config.disabled = false;
     createEngine(config, true);
   });
 }
@@ -211,7 +211,7 @@ async function addMyBinderEngine() {
   });
   dialog.on("add", async config => {
     dialog.close();
-    config.connected = true;
+    config.disabled = false;
     createEngine(config, true);
   });
 }
@@ -224,9 +224,15 @@ async function pingServer(url) {
 const registered_engines = {};
 
 async function createEngine(engine_config, saveEngine) {
+  // make sure we enable it
+  engine_config.disabled = false;
+  loadEngine(engine_config, saveEngine);
+}
+
+async function loadEngine(engine_config, saveEngine) {
   const engine_kernels = {};
   let _connected = false;
-  let initial_connection = engine_config.connected;
+  let initial_connection = !engine_config.disabled;
   await api.register({
     type: "engine",
     pluginType: "native-python",
@@ -274,9 +280,15 @@ async function createEngine(engine_config, saveEngine) {
         }
       }
       _connected = true;
-      engine_config.connected = true;
-      if (saveEngine) await save_engine_config(engine_config);
       return true;
+    },
+    async enable() {
+      engine_config.disabled = false;
+      if (saveEngine) await save_engine_config(engine_config);
+    },
+    async disable() {
+      engine_config.disabled = true;
+      if (saveEngine) await save_engine_config(engine_config);
     },
     async disconnect() {
       if (registered_engines[engine_config.name]) {
@@ -292,10 +304,7 @@ async function createEngine(engine_config, saveEngine) {
         }
         registered_engines[engine_config.name].kernels = [];
       }
-
       _connected = false;
-      engine_config.connected = false;
-      if (saveEngine) await save_engine_config(engine_config);
     },
     listPlugins: () => {},
     getPlugin: () => {},
