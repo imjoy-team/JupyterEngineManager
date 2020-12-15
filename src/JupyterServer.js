@@ -434,7 +434,7 @@ export default class JupyterServer {
       if (await pingServer(server_url + "elfinder" + "?token=" + token)) {
         enable_show_file_dialog = true;
       }
-      await window.api.register({
+      await window.api.registerService({
         type: "file-manager",
         name: name,
         url: url,
