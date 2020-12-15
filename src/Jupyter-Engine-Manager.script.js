@@ -286,9 +286,8 @@ async function loadEngine(engine_config, saveEngine) {
           }
         } else {
           try {
-            api.showMessage("Connecting to MyBinder...");
             await pingServer(engine_config.url);
-            api.showMessage("🎉Connected to MyBinder.");
+            api.showStatus("🎉Connected to MyBinder.");
           } catch (e) {
             console.error(e);
             api.showMessage("Failed to start server on MyBinder.org");
