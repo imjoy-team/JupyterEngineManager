@@ -356,15 +356,14 @@ async function loadEngine(engine_config, saveEngine) {
               }
             }
             if (!kernel) {
-              // try{
-              //   killPlugin({
-              //     id: config.id,
-              //     name: config.name,
-              //   });
-              // }
-              // catch(e){
-              //   console.error(e)
-              // }
+              try {
+                killPlugin({
+                  id: config.id,
+                  name: config.name
+                });
+              } catch (e) {
+                console.error(e);
+              }
 
               let serverSettings,
                 kernelSpecName = null;
