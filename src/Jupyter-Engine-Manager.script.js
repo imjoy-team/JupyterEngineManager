@@ -259,11 +259,11 @@ async function loadEngine(engine_config, saveEngine) {
         // do not connect for the first time if the engine was disconnected
         if (!initial_connection) {
           initial_connection = true;
-          return false;
+          resolve(false);
+          return;
         }
         if (engine_config.nbUrl) {
           const serverUrl = engine_config.nbUrl.split("?")[0];
-
           try {
             api.showMessage("Connecting to plugin engine " + serverUrl + "...");
             await jserver.startServer(engine_config);
@@ -282,7 +282,8 @@ async function loadEngine(engine_config, saveEngine) {
                 "Failed to connect to plugin engine " + serverUrl + "."
               );
             }
-            throw e;
+            reject(e);
+            return;
           }
         } else {
           try {
@@ -291,12 +292,13 @@ async function loadEngine(engine_config, saveEngine) {
           } catch (e) {
             console.error(e);
             api.showMessage("Failed to start server on MyBinder.org");
-            throw e;
+            reject(e);
+            return;
           }
         }
         _connected = true;
-        resolve();
-        return true;
+        resolve(true);
+        return;
       },
       async enable() {
         engine_config.disabled = false;
