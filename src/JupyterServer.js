@@ -520,7 +520,8 @@ export default class JupyterServer {
                 type: "file-manager",
                 url: url
               });
-              delete this.registered_file_managers[url];
+              if(this.registered_file_managers && this.registered_file_managers[url])
+                delete this.registered_file_managers[url];
               return false;
             }
           }
