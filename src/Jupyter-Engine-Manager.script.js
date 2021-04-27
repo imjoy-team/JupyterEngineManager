@@ -85,7 +85,13 @@ async function setup() {
   api.log("initialized");
 }
 
-async function addJupyterEngine() {
+async function addJupyterEngine(config) {
+  if (config && config.url) {
+    config.name = config.name || "Jupyter Engine";
+    config.disabled = false;
+    createEngine(config, false);
+    return;
+  }
   // Connect to the notebook webserver.
   const description = `#### Jupyter Engine <sup>alpha</sup>
  
@@ -147,7 +153,15 @@ async function addJupyterEngine() {
   });
 }
 
-async function addMyBinderEngine() {
+async function addMyBinderEngine(config) {
+  if (config) {
+    config.name = config.name || "Binder Engine";
+    config.spec = config.spec || DEFAULT_SPEC;
+    config.url = config.url || DEFAULT_SPEC;
+    config.disabled = false;
+    createEngine(config, false);
+    return;
+  }
   // Connect to the notebook webserver.
   const description = `### MyBinder Engine <sup>alpha</sup>
   You can run Python plugin in ImJoy via free Jupyter servers provided by [MyBinder.org](https://mybinder.org). 
