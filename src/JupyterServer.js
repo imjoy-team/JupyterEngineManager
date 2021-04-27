@@ -353,11 +353,13 @@ export default class JupyterServer {
       name = null,
       spec = DEFAULT_SPEC,
       baseUrl = DEFAULT_BASE_URL,
+      url = null,
       provider = DEFAULT_PROVIDER,
       nbUrl = false
     } = {},
     api
   ) {
+    baseUrl = url || baseUrl;
     api = api || window.api;
     let serverSettings = null;
     let server_url = null,
