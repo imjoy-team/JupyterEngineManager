@@ -144,8 +144,8 @@ export default class BinderHub {
       // needed to connect.
       this.registerCallback("ready", (oldState, newState, data) => {
         eventSource.close();
-        if(data.url&&data.url.startsWith('http://'))
-          data.url = data.url.replace('http://', 'https://')
+        if (data.url && data.url.startsWith("http://"))
+          data.url = data.url.replace("http://", "https://");
         resolve(data);
       });
     });
