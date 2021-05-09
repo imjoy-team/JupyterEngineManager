@@ -157,7 +157,8 @@ async function addMyBinderEngine(config) {
   if (config) {
     config.name = config.name || "Binder Engine";
     config.spec = config.spec || DEFAULT_SPEC;
-    config.url = config.url || DEFAULT_SPEC;
+    config.url = config.url || DEFAULT_BASE_URL;
+    config.url = config.url.replace(/\/$/, "");
     config.disabled = false;
     createEngine(config, false);
     return;
