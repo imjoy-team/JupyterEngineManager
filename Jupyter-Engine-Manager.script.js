@@ -157,7 +157,8 @@ async function addMyBinderEngine(config) {
   if (config) {
     config.name = config.name || "Binder Engine";
     config.spec = config.spec || DEFAULT_SPEC;
-    config.url = config.url || DEFAULT_SPEC;
+    config.url = config.url || DEFAULT_BASE_URL;
+    config.url = config.url.replace(/\/$/, "");
     config.disabled = false;
     createEngine(config, false);
     return;
@@ -248,6 +249,12 @@ async function loadEngine(engine_config, saveEngine) {
     const engine_kernels = {};
     let _connected = false;
     let initial_connection = !engine_config.disabled;
+    // remove / in the end
+    if (engine_config.url && engine_config.url.endsWith("/"))
+      engine_config.url = engine_config.url.slice(
+        0,
+        engine_config.url.length - 1
+      );
     const killPlugin = config => {
       for (let k in jserver._kernels) {
         const kernel = jserver._kernels[k];
