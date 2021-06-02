@@ -286,9 +286,9 @@ async function loadEngine(engine_config, saveEngine) {
         if (engine_config.nbUrl) {
           const serverUrl = engine_config.nbUrl.split("?")[0];
           try {
-            api.showMessage("Connecting to plugin engine " + serverUrl + "...");
+            api.log("Connecting to plugin engine " + serverUrl + "...");
             await jserver.startServer(engine_config);
-            api.showMessage("🎉Connected to server " + serverUrl + ".");
+            api.log("🎉Connected to server " + serverUrl + ".");
           } catch (e) {
             if (e.toString().includes("403 Forbidden")) {
               console.error(e);
@@ -309,7 +309,7 @@ async function loadEngine(engine_config, saveEngine) {
         } else {
           try {
             await pingServer(engine_config.url);
-            api.showStatus("🎉Connected to MyBinder.");
+            api.log("🎉Connected to MyBinder.");
           } catch (e) {
             console.error(e);
             api.showMessage("Failed to start server on MyBinder.org");
