@@ -207,7 +207,7 @@ export default class JupyterServer {
   constructor() {
     // this._kernelHeartbeat = this._kernelHeartbeat.bind(this)
     this.cached_servers = null;
-    this.cached_kernels = null;
+    this.cached_kernels = {};
     this.registered_file_managers = {};
     this.knownKernels = [];
     this._kernels = {};
