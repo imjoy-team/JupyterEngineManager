@@ -206,9 +206,17 @@ function uploadFile(content_manager, file, path, display, progressbar) {
 export default class JupyterServer {
   constructor() {
     // this._kernelHeartbeat = this._kernelHeartbeat.bind(this)
-    this.cached_servers = {};
+    this.cached_servers = null;
+    this.cached_kernels = null;
     this.registered_file_managers = {};
     this.knownKernels = [];
+    this._kernels = {};
+    // Keep track of properties for debugging
+    this.kernel = null;
+    this._kernelHeartbeat();
+  }
+
+  loadCached() {
     try {
       if (localStorage.jupyter_servers) {
         try {
@@ -227,9 +235,12 @@ export default class JupyterServer {
             });
           }
         } catch (e) {}
+      } else {
+        this.cached_servers = {};
       }
     } catch (e) {
       console.error(e);
+      this.cached_servers = {};
     }
     this.cached_kernels = {};
     try {
@@ -249,12 +260,6 @@ export default class JupyterServer {
       "cached kernels: ",
       this.cached_kernels
     );
-
-    this._kernels = {};
-
-    // Keep track of properties for debugging
-    this.kernel = null;
-    this._kernelHeartbeat();
   }
 
   async _kernelHeartbeat(seconds_between_check = 5) {
@@ -369,6 +374,9 @@ export default class JupyterServer {
     document.cookie = null;
 
     const config_str = JSON.stringify({ name, spec, baseUrl, provider, nbUrl });
+    if (!this.cached_servers) {
+      this.loadCached();
+    }
     if (this.cached_servers[config_str]) {
       const { url, token } = this.cached_servers[config_str];
       server_url = url;
