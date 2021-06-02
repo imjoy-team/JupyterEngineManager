@@ -392,6 +392,7 @@ export default class JupyterServer {
         console.log("reusing an existing server: ", url, kernelSpecs);
         api.log("Connected to an existing server: " + url);
       } catch (e) {
+        serverSettings = null;
         console.log(
           "failed to reuse an existing server, will start another one."
         );
