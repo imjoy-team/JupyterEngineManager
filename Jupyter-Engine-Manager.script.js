@@ -66,7 +66,7 @@ async function setup() {
   // create the binder plugin for the first time
   const temp = await api.getConfig("engines");
   if (!temp) {
-    createEngine(
+    await createEngine(
       {
         name: "MyBinder Engine",
         url: DEFAULT_BASE_URL,
@@ -89,7 +89,7 @@ async function addJupyterEngine(config) {
   if (config && config.url) {
     config.name = config.name || "Jupyter Engine";
     config.disabled = false;
-    createEngine(config, false);
+    await createEngine(config, false);
     return;
   }
   // Connect to the notebook webserver.
@@ -149,7 +149,7 @@ async function addJupyterEngine(config) {
     dialog.close();
     config.url = config.nbUrl.split("?")[0];
     config.disabled = false;
-    createEngine(config, true);
+    await createEngine(config, true);
   });
 }
 
@@ -160,7 +160,7 @@ async function addMyBinderEngine(config) {
     config.url = config.url || DEFAULT_BASE_URL;
     config.url = config.url.replace(/\/$/, "");
     config.disabled = false;
-    createEngine(config, false);
+    await createEngine(config, false);
     return;
   }
   // Connect to the notebook webserver.
@@ -227,7 +227,7 @@ async function addMyBinderEngine(config) {
   dialog.on("add", async config => {
     dialog.close();
     config.disabled = false;
-    createEngine(config, true);
+    await createEngine(config, true);
   });
 }
 
