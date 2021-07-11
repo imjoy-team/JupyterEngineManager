@@ -33,7 +33,7 @@ async function save_engine_config(engine_config) {
 const jserver = new JupyterEngineManager.JupyterServer();
 
 async function setup() {
-  await api.register({
+  await api.registerService({
     type: "engine-factory",
     name: "MyBinder-Engine",
     addEngine: addMyBinderEngine,
@@ -48,7 +48,7 @@ async function setup() {
     }
   });
 
-  await api.register({
+  await api.registerService({
     type: "engine-factory",
     name: "Jupyter-Engine",
     addEngine: addJupyterEngine,
@@ -268,7 +268,7 @@ async function loadEngine(engine_config, saveEngine) {
         }
       }
     };
-    await api.register({
+    await api.registerService({
       type: "engine",
       pluginType: "native-python",
       factory: "Jupyter-Engine",
