@@ -276,6 +276,7 @@ async function loadEngine(engine_config, saveEngine) {
       name: engine_config.name,
       url: engine_config.url,
       config: engine_config,
+      lazy_connection: true,
       async connect() {
         if (saveEngine) await save_engine_config(engine_config);
         // do not connect for the first time if the engine was disconnected
