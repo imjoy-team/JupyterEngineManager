@@ -80,9 +80,13 @@ async function setup() {
   let saved_engines = await save_engine_config();
   for (let url in saved_engines) {
     const config = saved_engines[url];
-    loadEngine(config, true);
+    try {
+      await loadEngine(config, true);
+    } catch (e) {
+      console.error(e);
+    }
   }
-  api.log("initialized");
+  await api.log("Jupyter Engine Manager initialized");
 }
 
 async function addJupyterEngine(config) {
