@@ -345,7 +345,6 @@ async function loadEngine(engine_config, saveEngine) {
         }
         registered_engines[engine_config.name].kernels = [];
       }
-      reject();
       _connected = false;
     },
     listPlugins: () => {},
