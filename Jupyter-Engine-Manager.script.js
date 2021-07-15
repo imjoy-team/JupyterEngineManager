@@ -281,7 +281,7 @@ async function loadEngine(engine_config, saveEngine) {
     config: engine_config,
     lazy_connection: true,
     async connect() {
-      if (saveEngine) await save_engine_config(engine_config);
+      // if (saveEngine) await save_engine_config(engine_config);
       // do not connect for the first time if the engine was disconnected
       if (!initial_connection) {
         initial_connection = true;
@@ -322,6 +322,7 @@ async function loadEngine(engine_config, saveEngine) {
         }
       }
       _connected = true;
+      if (saveEngine) await save_engine_config(engine_config);
     },
     async enable() {
       engine_config.disabled = false;
