@@ -307,7 +307,6 @@ async function loadEngine(engine_config, saveEngine) {
               "Failed to connect to plugin engine " + serverUrl + "."
             );
           }
-          reject(e);
           return;
         }
       } else {
@@ -317,7 +316,6 @@ async function loadEngine(engine_config, saveEngine) {
         } catch (e) {
           console.error(e);
           api.showMessage("Failed to start server on MyBinder.org");
-          reject(e);
           return;
         }
       }
