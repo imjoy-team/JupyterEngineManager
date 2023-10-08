@@ -55,7 +55,7 @@
     "json-loader": "^0.5.4",
     "lerna": "^3.8.0",
     "lodash.debounce": "^4.0.8",
-    "postcss": "^6.0.2",
+    "postcss": "^8.4.31",
     "prettier": "^1.6.1",
     "rimraf": "^2.6.2",
     "schema-utils": "^0.4.3",
